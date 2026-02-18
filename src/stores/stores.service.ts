@@ -1,9 +1,18 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, Role, StoreStatus } from '@prisma/client';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-const SUPER_ROLES: Role[] = [Role.super_admin, Role.ops, Role.support, Role.finance];
+const SUPER_ROLES: Role[] = [
+  Role.super_admin,
+  Role.ops,
+  Role.support,
+  Role.finance,
+];
 
 @Injectable()
 export class StoresService {
@@ -12,7 +21,10 @@ export class StoresService {
     private readonly auditService: AuditService,
   ) {}
 
-  async create(ownerId: string, data: { name: string; slug: string; themePreset?: string }) {
+  async create(
+    ownerId: string,
+    data: { name: string; slug: string; themePreset?: string },
+  ) {
     const store = await this.prisma.store.create({
       data: {
         ownerId,
@@ -55,7 +67,12 @@ export class StoresService {
 
   async update(
     id: string,
-    data: { name?: string; slug?: string; themePreset?: string; status?: StoreStatus },
+    data: {
+      name?: string;
+      slug?: string;
+      themePreset?: string;
+      status?: StoreStatus;
+    },
     actor: { id: string; role: Role },
   ) {
     const store = await this.prisma.store.update({ where: { id }, data });
@@ -87,7 +104,11 @@ export class StoresService {
     return store;
   }
 
-  async upsertTracking(storeId: string, data: { pixelId?: string; gtmId?: string; capiToken?: string }, actor: { id: string; role: Role }) {
+  async upsertTracking(
+    storeId: string,
+    data: { pixelId?: string; gtmId?: string; capiToken?: string },
+    actor: { id: string; role: Role },
+  ) {
     const config = await this.prisma.trackingConfig.upsert({
       where: { storeId },
       create: {
@@ -115,7 +136,11 @@ export class StoresService {
     return config;
   }
 
-  async upsertTheme(storeId: string, data: { preset?: string; customJson?: Record<string, unknown> }, actor: { id: string; role: Role }) {
+  async upsertTheme(
+    storeId: string,
+    data: { preset?: string; customJson?: Record<string, unknown> },
+    actor: { id: string; role: Role },
+  ) {
     const theme = await this.prisma.themeConfig.upsert({
       where: { storeId },
       create: {
@@ -144,7 +169,9 @@ export class StoresService {
   async assertStoreAccess(storeId: string, user: { id: string; role: Role }) {
     if (SUPER_ROLES.includes(user.role)) return;
 
-    const store = await this.prisma.store.findUnique({ where: { id: storeId } });
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+    });
     if (!store) throw new NotFoundException('Store not found');
 
     if (store.ownerId === user.id) return;

@@ -1,9 +1,28 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { Role, StoreStatus } from '@prisma/client';
-import { IsBoolean, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsEnum,
+  IsIn,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
+import { RequestUser } from '../common/interfaces/request-user.interface';
 import { SuperAdminService } from './super-admin.service';
 
 class UpdateStoreStatusDto {
@@ -11,15 +30,64 @@ class UpdateStoreStatusDto {
   status!: StoreStatus;
 }
 
+class UpdateLifecycleDto {
+  @IsOptional()
+  @IsString()
+  publishStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  domainStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  sslStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
 class InviteAdminDto {
   @IsString()
   name!: string;
 
-  @IsString()
+  @IsEmail()
   email!: string;
 
   @IsEnum(Role)
   role!: Role;
+}
+
+class UpdatePaymentOpsDto {
+  @IsOptional()
+  @IsBoolean()
+  stripeEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  sslCommerzEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  codEnabled?: boolean;
+
+  @IsOptional()
+  @IsIn(['test', 'live'])
+  mode?: 'test' | 'live';
+}
+
+class UpdateTicketDto {
+  @IsIn(['open', 'in_progress', 'resolved'])
+  status!: 'open' | 'in_progress' | 'resolved';
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @IsOptional()
+  @IsIn(['low', 'medium', 'high'])
+  priority?: 'low' | 'medium' | 'high';
 }
 
 class UpdateFlagDto {
@@ -34,6 +102,11 @@ class UpdateFlagDto {
 class UpdateSettingDto {
   @IsObject()
   valueJson!: Record<string, unknown>;
+}
+
+class UpsertSettingsBatchDto {
+  @IsObject()
+  values!: Record<string, Record<string, unknown>>;
 }
 
 @Controller('api/super-admin')
@@ -55,8 +128,12 @@ export class SuperAdminController {
 
   @Patch('stores/:id/status')
   @Roles(Role.super_admin, Role.ops)
-  updateStoreStatus(@Param('id') id: string, @Body() dto: UpdateStoreStatusDto) {
-    return this.superAdminService.updateStoreStatus(id, dto.status);
+  updateStoreStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateStoreStatusDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.updateStoreStatus(id, dto.status, user);
   }
 
   @Get('lifecycle')
@@ -71,6 +148,16 @@ export class SuperAdminController {
     return this.superAdminService.lifecycleByStore(storeId);
   }
 
+  @Patch('lifecycle/:storeId')
+  @Roles(Role.super_admin, Role.ops)
+  updateLifecycle(
+    @Param('storeId') storeId: string,
+    @Body() dto: UpdateLifecycleDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.updateLifecycle(storeId, dto, user);
+  }
+
   @Get('admins')
   @Roles(Role.super_admin)
   admins() {
@@ -79,8 +166,8 @@ export class SuperAdminController {
 
   @Post('admins/invite')
   @Roles(Role.super_admin)
-  inviteAdmin(@Body() dto: InviteAdminDto) {
-    return this.superAdminService.inviteAdmin(dto);
+  inviteAdmin(@Body() dto: InviteAdminDto, @CurrentUser() user: RequestUser) {
+    return this.superAdminService.inviteAdmin(dto, user);
   }
 
   @Get('subscriptions')
@@ -101,6 +188,16 @@ export class SuperAdminController {
     return this.superAdminService.paymentOpsByStore(storeId);
   }
 
+  @Patch('payment-ops/:storeId')
+  @Roles(Role.super_admin, Role.finance, Role.ops)
+  updatePaymentOps(
+    @Param('storeId') storeId: string,
+    @Body() dto: UpdatePaymentOpsDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.updatePaymentOps(storeId, dto, user);
+  }
+
   @Get('tickets')
   @Roles(Role.super_admin, Role.support)
   tickets() {
@@ -111,6 +208,16 @@ export class SuperAdminController {
   @Roles(Role.super_admin, Role.support)
   ticket(@Param('id') id: string) {
     return this.superAdminService.ticket(id);
+  }
+
+  @Patch('tickets/:id')
+  @Roles(Role.super_admin, Role.support, Role.ops)
+  updateTicket(
+    @Param('id') id: string,
+    @Body() dto: UpdateTicketDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.updateTicket(id, dto, user);
   }
 
   @Get('health')
@@ -139,8 +246,17 @@ export class SuperAdminController {
 
   @Patch('flags/:key')
   @Roles(Role.super_admin, Role.ops)
-  upsertFlag(@Param('key') key: string, @Body() dto: UpdateFlagDto) {
-    return this.superAdminService.upsertFlag(key, dto.enabled, dto.description);
+  upsertFlag(
+    @Param('key') key: string,
+    @Body() dto: UpdateFlagDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.upsertFlag(
+      key,
+      dto.enabled,
+      dto.description,
+      user,
+    );
   }
 
   @Get('audit-logs')
@@ -157,7 +273,20 @@ export class SuperAdminController {
 
   @Patch('settings/:key')
   @Roles(Role.super_admin, Role.ops)
-  upsertSetting(@Param('key') key: string, @Body() dto: UpdateSettingDto) {
-    return this.superAdminService.upsertSetting(key, dto.valueJson);
+  upsertSetting(
+    @Param('key') key: string,
+    @Body() dto: UpdateSettingDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.upsertSetting(key, dto.valueJson, user);
+  }
+
+  @Put('settings')
+  @Roles(Role.super_admin, Role.ops)
+  upsertSettingsBatch(
+    @Body() dto: UpsertSettingsBatchDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.upsertSettingsBatch(dto.values, user);
   }
 }

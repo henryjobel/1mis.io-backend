@@ -7,37 +7,26 @@ NestJS backend with multi-tenant store APIs and super-admin APIs in one service.
 - PostgreSQL + Prisma
 - Redis + BullMQ
 - JWT + RBAC
-- Gemini integration flow (async job pipeline placeholder)
+- Gemini integration flow (async jobs)
 
 ## Quick Start
-1. Copy env file:
-   - `cp .env.example .env`
-2. Start infra:
-   - `docker compose up -d`
-3. Install deps:
-   - `npm install`
-4. Generate Prisma client:
-   - `npm run prisma:generate`
-5. Push schema:
-   - `npm run prisma:push`
-6. Seed default admin:
-   - `npm run seed`
-7. Run API:
-   - `npm run start:dev`
+1. `cp .env.example .env`
+2. `docker compose up -d`
+3. `npm install`
+4. `npm run prisma:generate`
+5. `npm run prisma:push`
+6. `npm run seed`
+7. `npm run start:dev`
 
 Default API port: `4000`
 
-## Core Modules
-- `auth`: signup/login/refresh/me
-- `users`: profile update
-- `stores`: store CRUD, publish, tracking config, theme config
-- `products`: product CRUD
-- `orders`: list + status updates
-- `ai-generation`: async AI job create/status/result
-- `super-admin`: platform operations endpoints
-- `queue`: BullMQ queue/worker wiring
-- `prisma`: DB client layer
-- `common`: guards/decorators/audit service
+## Security + Auth
+- JWT access + refresh
+- Refresh token rotation + revoke on logout
+- RBAC roles (`owner, staff, super_admin, ops, support, finance`)
+- Store isolation guard
+- Helmet + throttler
+- Password reset placeholder endpoints (token flow)
 
 ## API Map
 
@@ -45,6 +34,9 @@ Default API port: `4000`
 - `POST /api/auth/signup`
 - `POST /api/auth/login`
 - `POST /api/auth/refresh`
+- `POST /api/auth/logout`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 - `GET /api/auth/me`
 - `PATCH /api/users/me`
 
@@ -95,16 +87,15 @@ Default API port: `4000`
 ## AI Queue Flow
 1. Client calls `POST /api/stores/:id/ai/generate`
 2. API stores `AiGenerationJob` with `queued`
-3. BullMQ enqueues a worker task
-4. Worker marks `running`, processes prompt (Gemini placeholder), saves result
-5. Job ends as `completed` or `failed`
-6. Client polls status/result endpoints
+3. BullMQ enqueues worker task
+4. Worker calls Gemini API (or fallback when key missing)
+5. Zod validates strict JSON result
+6. Job ends `completed` or `failed`
 
-## Security
-- JWT access + refresh token flow
-- RBAC via roles: `owner, staff, super_admin, ops, support, finance`
-- Store isolation guard for store-scoped endpoints
+## Tests
+- Unit: `npm test`
+- E2E smoke: `npm run test:e2e`
 
 ## Notes
-- Gemini call is currently a safe placeholder pipeline; swap in real SDK call in `src/ai-generation/ai-generation.service.ts`.
-- Queue has fallback mode when Redis is not available.
+- `docker` is required locally for Postgres/Redis.
+- Audit log hooks are added on sensitive write actions.

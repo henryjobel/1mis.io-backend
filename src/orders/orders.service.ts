@@ -18,8 +18,15 @@ export class OrdersService {
     });
   }
 
-  async updateStatus(storeId: string, orderId: string, status: OrderStatus, actor: { id: string; role: Role }) {
-    const existing = await this.prisma.order.findFirst({ where: { id: orderId, storeId } });
+  async updateStatus(
+    storeId: string,
+    orderId: string,
+    status: OrderStatus,
+    actor: { id: string; role: Role },
+  ) {
+    const existing = await this.prisma.order.findFirst({
+      where: { id: orderId, storeId },
+    });
     if (!existing) throw new NotFoundException('Order not found');
 
     const order = await this.prisma.order.update({

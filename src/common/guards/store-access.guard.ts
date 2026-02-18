@@ -3,7 +3,12 @@ import { Role } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RequestUser } from '../interfaces/request-user.interface';
 
-const SUPER_ROLES: Role[] = [Role.super_admin, Role.ops, Role.support, Role.finance];
+const SUPER_ROLES: Role[] = [
+  Role.super_admin,
+  Role.ops,
+  Role.support,
+  Role.finance,
+];
 
 @Injectable()
 export class StoreAccessGuard implements CanActivate {

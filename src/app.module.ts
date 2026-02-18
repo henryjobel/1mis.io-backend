@@ -15,6 +15,19 @@ import { OrdersModule } from './orders/orders.module';
 import { QueueModule } from './queue/queue.module';
 import { AiGenerationModule } from './ai-generation/ai-generation.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
+import { CategoriesModule } from './categories/categories.module';
+import { MembersModule } from './members/members.module';
+import { ThemesModule } from './themes/themes.module';
+import { MediaModule } from './media/media.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { PublicStoreModule } from './public-store/public-store.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+import { PromotionsModule } from './promotions/promotions.module';
+import { PaymentsModule } from './payments/payments.module';
+import { ShippingModule } from './shipping/shipping.module';
+import { CustomersModule } from './customers/customers.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -36,6 +49,19 @@ import { SuperAdminModule } from './super-admin/super-admin.module';
     QueueModule,
     AiGenerationModule,
     SuperAdminModule,
+    CategoriesModule,
+    MembersModule,
+    ThemesModule,
+    MediaModule,
+    ReviewsModule,
+    PublicStoreModule,
+    WebhooksModule,
+    PromotionsModule,
+    PaymentsModule,
+    ShippingModule,
+    CustomersModule,
+    AnalyticsModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

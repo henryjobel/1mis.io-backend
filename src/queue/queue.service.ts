@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JobsOptions, Queue, Worker } from 'bullmq';
 
@@ -13,7 +18,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async onModuleInit() {
+  onModuleInit() {
     const host = this.configService.get<string>('REDIS_HOST');
     const port = this.configService.get<number>('REDIS_PORT');
 
@@ -29,13 +34,18 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
         'ai-generation',
         async (job) => {
           if (!this.aiProcessor) return;
-          await this.aiProcessor(job.data.jobId as string);
+          const data = job.data as Record<string, unknown>;
+          const jobId = typeof data.jobId === 'string' ? data.jobId : '';
+          if (!jobId) return;
+          await this.aiProcessor(jobId);
         },
         { connection },
       );
       this.logger.log('BullMQ queue initialized');
     } catch (error) {
-      this.logger.warn(`Queue init failed, fallback mode enabled: ${(error as Error).message}`);
+      this.logger.warn(
+        `Queue init failed, fallback mode enabled: ${(error as Error).message}`,
+      );
     }
   }
 

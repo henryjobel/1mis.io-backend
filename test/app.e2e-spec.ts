@@ -1,25 +1,35 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { Test, TestingModule } from '@nestjs/testing';
+import * as request from 'supertest';
+import { AppController } from '../src/app.controller';
+import { AppService } from '../src/app.service';
 
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+describe('Health (e2e)', () => {
+  let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      controllers: [AppController],
+      providers: [AppService],
     }).compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it('/health (GET)', () => {
+    const server = app.getHttpServer() as Parameters<typeof request>[0];
+    return request(server)
+      .get('/health')
       .expect(200)
-      .expect('Hello World!');
+      .expect((res) => {
+        const body = res.body as { status: string; service: string };
+        expect(body.status).toBe('ok');
+        expect(body.service).toBe('backend');
+      });
   });
 });

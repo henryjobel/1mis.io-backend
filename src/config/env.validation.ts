@@ -11,6 +11,10 @@ const envSchema = z.object({
   REDIS_PORT: z.coerce.number().default(6379),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
+  GEMINI_PROJECT_NAME: z.string().optional(),
+  GEMINI_PROJECT_NUMBER: z.string().optional(),
+  GEMINI_PROJECT_ID: z.string().optional(),
+  WEBHOOK_SECRET: z.string().optional(),
 });
 
 export function validateEnv(config: Record<string, unknown>) {

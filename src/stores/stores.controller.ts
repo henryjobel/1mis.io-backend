@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { StoreStatus } from '@prisma/client';
 import { IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -84,7 +92,11 @@ export class StoresController {
 
   @UseGuards(StoreAccessGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateStoreDto, @CurrentUser() user: RequestUser) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateStoreDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.storesService.update(id, dto, user);
   }
 
@@ -96,13 +108,21 @@ export class StoresController {
 
   @UseGuards(StoreAccessGuard)
   @Patch(':id/tracking')
-  updateTracking(@Param('id') id: string, @Body() dto: UpdateTrackingDto, @CurrentUser() user: RequestUser) {
+  updateTracking(
+    @Param('id') id: string,
+    @Body() dto: UpdateTrackingDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.storesService.upsertTracking(id, dto, user);
   }
 
   @UseGuards(StoreAccessGuard)
   @Patch(':id/theme')
-  updateTheme(@Param('id') id: string, @Body() dto: UpdateThemeDto, @CurrentUser() user: RequestUser) {
+  updateTheme(
+    @Param('id') id: string,
+    @Body() dto: UpdateThemeDto,
+    @CurrentUser() user: RequestUser,
+  ) {
     return this.storesService.upsertTheme(id, dto, user);
   }
 }

@@ -1,0 +1,196 @@
+{
+  "info": {
+    "name": "1mis Backend API",
+    "_postman_id": "d2b5e826-8fb8-4d24-90c0-1mis-backend-api",
+    "description": "Postman collection for 1mis.io backend APIs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "storeId", "value": "" },
+    { "key": "jobId", "value": "" },
+    { "key": "ownerEmail", "value": "henryowner@example.com" },
+    { "key": "ownerPassword", "value": "123456" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/health" }
+    },
+    {
+      "name": "Auth - Signup (Owner)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Henry Owner\",\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/signup"
+      }
+    },
+    {
+      "name": "Auth - Login (Super Admin)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@1mis.io\",\n  \"password\": \"admin12345\"\n}"
+        },
+        "url": "{{baseUrl}}/api/auth/login"
+      }
+    },
+    {
+      "name": "Auth - Me",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/auth/me"
+      }
+    },
+    {
+      "name": "Stores - Create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "if (data.id) pm.collectionVariables.set('storeId', data.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"1mis Demo Store\",\n  \"slug\": \"demo-store-{{ownerEmail}}\",\n  \"themePreset\": \"aurora\"\n}"
+        },
+        "url": "{{baseUrl}}/api/stores"
+      }
+    },
+    {
+      "name": "AI - Generate",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const data = pm.response.json();",
+              "if (data.id) pm.collectionVariables.set('jobId', data.id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"prompt\": \"Build a premium ecommerce store for headphones\",\n  \"inputImages\": []\n}"
+        },
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/ai/generate"
+      }
+    },
+    {
+      "name": "AI - Job Result",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/ai/jobs/{{jobId}}/result"
+      }
+    },
+    {
+      "name": "Super Admin - Health",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/super-admin/health"
+      }
+    },
+    {
+      "name": "Super Admin - Patch Lifecycle",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"publishStatus\": \"published\",\n  \"domainStatus\": \"connected\",\n  \"sslStatus\": \"active\"\n}"
+        },
+        "url": "{{baseUrl}}/api/super-admin/lifecycle/{{storeId}}"
+      }
+    },
+    {
+      "name": "Super Admin - Patch Payment Ops",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"stripeEnabled\": true,\n  \"sslCommerzEnabled\": true,\n  \"codEnabled\": false,\n  \"mode\": \"live\"\n}"
+        },
+        "url": "{{baseUrl}}/api/super-admin/payment-ops/{{storeId}}"
+      }
+    },
+    {
+      "name": "Super Admin - Patch Ticket",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"in_progress\",\n  \"priority\": \"high\",\n  \"note\": \"Investigating checkout failure\"\n}"
+        },
+        "url": "{{baseUrl}}/api/super-admin/tickets/T-1001"
+      }
+    },
+    {
+      "name": "Super Admin - PUT Settings Batch",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"values\": {\n    \"platform.ui\": {\"theme\": \"light\"},\n    \"platform.notify\": {\"email\": \"ops@1mis.io\"}\n  }\n}"
+        },
+        "url": "{{baseUrl}}/api/super-admin/settings"
+      }
+    }
+  ]
+}
