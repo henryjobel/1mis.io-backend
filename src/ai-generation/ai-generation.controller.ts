@@ -21,6 +21,15 @@ class ApplyAiJobDto {
   replaceProducts?: boolean;
 }
 
+class SavePromptDto {
+  @IsString()
+  prompt!: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+}
+
 @Controller('api/stores/:id/ai')
 @UseGuards(JwtAuthGuard, StoreAccessGuard)
 export class AiGenerationController {
@@ -60,5 +69,28 @@ export class AiGenerationController {
     return this.aiGenerationService.applyJobResult(storeId, jobId, user, {
       replaceProducts: dto.replaceProducts ?? false,
     });
+  }
+
+  @Get('prompts')
+  prompts(@Param('id') storeId: string) {
+    return this.aiGenerationService.listPrompts(storeId);
+  }
+
+  @Post('prompts')
+  savePrompt(
+    @Param('id') storeId: string,
+    @Body() dto: SavePromptDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.aiGenerationService.savePrompt(storeId, dto, user);
+  }
+
+  @Post('prompts/:promptId/replay')
+  replayPrompt(
+    @Param('id') storeId: string,
+    @Param('promptId') promptId: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.aiGenerationService.replayPrompt(storeId, promptId, user);
   }
 }

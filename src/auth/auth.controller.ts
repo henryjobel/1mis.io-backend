@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
@@ -42,6 +42,20 @@ export class AuthController {
   @Post('reset-password')
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Get('google/start')
+  googleStart(@Query('redirectUri') redirectUri?: string) {
+    return this.authService.googleStart(redirectUri);
+  }
+
+  @Get('google/callback')
+  googleCallback(
+    @Query('code') code?: string,
+    @Query('state') state?: string,
+    @Query('email') email?: string,
+  ) {
+    return this.authService.googleCallback({ code, state, email });
   }
 
   @UseGuards(JwtAuthGuard)

@@ -21,6 +21,34 @@ declare class UpdateThemeDto {
     preset?: string;
     customJson?: Record<string, unknown>;
 }
+declare class UpdateMarketingDto {
+    facebookPageId?: string;
+    businessManagerId?: string;
+    adAccountId?: string;
+    catalogId?: string;
+    productFeedUrl?: string;
+    metaPixelId?: string;
+    conversionApiToken?: string;
+    gtmId?: string;
+    isDomainVerified?: boolean;
+    isShopConnected?: boolean;
+    isPixelEnabled?: boolean;
+    isCapiEnabled?: boolean;
+    isGtmEnabled?: boolean;
+}
+declare class UpdateContentDto {
+    hero?: Record<string, unknown>;
+    navigation?: Record<string, unknown>;
+    footer?: Record<string, unknown>;
+    sections?: Record<string, unknown>;
+}
+declare class ConnectDomainDto {
+    domain: string;
+}
+declare class BuyDomainDto {
+    domain: string;
+    autoConnect?: boolean;
+}
 export declare class StoresController {
     private readonly storesService;
     constructor(storesService: StoresService);
@@ -115,6 +143,38 @@ export declare class StoresController {
         storeId: string;
         preset: string | null;
         customJson: import("@prisma/client/runtime/library").JsonValue | null;
+    }>;
+    getMarketing(id: string): Promise<string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray>;
+    upsertMarketing(id: string, dto: UpdateMarketingDto, user: RequestUser): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: import("@prisma/client/runtime/library").JsonValue;
+    }>;
+    getContent(id: string): Promise<string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray>;
+    upsertContent(id: string, dto: UpdateContentDto, user: RequestUser): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: import("@prisma/client/runtime/library").JsonValue;
+    }>;
+    connectDomain(id: string, dto: ConnectDomainDto, user: RequestUser): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: import("@prisma/client/runtime/library").JsonValue;
+    }>;
+    verifyDomain(id: string, user: RequestUser): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: import("@prisma/client/runtime/library").JsonValue;
+    }>;
+    buyDomain(id: string, dto: BuyDomainDto, user: RequestUser): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: import("@prisma/client/runtime/library").JsonValue;
+    }>;
+    refreshSsl(id: string, user: RequestUser): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
 }
 export {};

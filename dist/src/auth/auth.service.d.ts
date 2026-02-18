@@ -63,6 +63,25 @@ export declare class AuthService {
         isActive: boolean;
         createdAt: Date;
     } | null>;
+    googleStart(redirectUri?: string): {
+        provider: string;
+        authUrl: string;
+        state: `${string}-${string}-${string}-${string}-${string}`;
+        note: string;
+    };
+    googleCallback(params: {
+        code?: string;
+        state?: string;
+        email?: string;
+    }): Promise<{
+        user: {
+            id: string;
+            email: string;
+            role: Role;
+        };
+        accessToken: string;
+        refreshToken: string;
+    }>;
     private issueTokens;
     private parseExpiryMs;
     private sha256;

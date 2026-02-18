@@ -1,0 +1,10 @@
+{
+  "id": "ai-store-check-env",
+  "name": "AI Store Check Env",
+  "values": [
+    {"key":"baseUrl","value":"http://localhost:4000","enabled":true},
+    {"key":"accessToken","value":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWxzZmg5dHgwMDAwZXdmYTl6bXd3aHBhIiwiZW1haWwiOiJhZG1pbkAxbWlzLmlvIiwicm9sZSI6InN1cGVyX2FkbWluIiwiaWF0IjoxNzcxNDQ5OTc2LCJleHAiOjE3NzE0NTA4NzZ9.zoKYHu3TEqbCJzL9aonc6UFZ1qlxkT8nUExuTn_Gk4k","enabled":true},
+    {"key":"storeId","value":"cmlsjktq10010et2dl053om2f","enabled":true},
+    {"key":"jobId","value":"cmlsjktsq0014et2d9nt18yn1","enabled":true}
+  ]
+}

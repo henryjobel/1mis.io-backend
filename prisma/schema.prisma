@@ -396,6 +396,7 @@ model FeatureFlag {
   key         String   @id
   enabled     Boolean  @default(false)
   description String?
+  rolloutPct  Int      @default(100)
   updatedAt   DateTime @updatedAt
 }
 

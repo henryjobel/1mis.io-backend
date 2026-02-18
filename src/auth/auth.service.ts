@@ -208,6 +208,61 @@ export class AuthService {
     });
   }
 
+  googleStart(redirectUri?: string) {
+    const fakeState = randomUUID();
+    const callback =
+      redirectUri?.trim() || 'http://localhost:4000/api/auth/google/callback';
+    return {
+      provider: 'google',
+      authUrl: `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20email%20profile&state=${fakeState}&redirect_uri=${encodeURIComponent(callback)}`,
+      state: fakeState,
+      note: 'Use callback endpoint with code/state for local simulation',
+    };
+  }
+
+  async googleCallback(params: {
+    code?: string;
+    state?: string;
+    email?: string;
+  }) {
+    if (!params.code && !params.email) {
+      throw new UnauthorizedException('Missing OAuth code or email');
+    }
+
+    const normalizedEmail =
+      params.email?.trim().toLowerCase() || `google_user_${Date.now()}@1mis.io`;
+
+    let user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          name: normalizedEmail.split('@')[0],
+          email: normalizedEmail,
+          passwordHash: await hash(randomUUID(), 10),
+          role: Role.owner,
+        },
+      });
+    }
+
+    await this.auditService.log({
+      actorUserId: user.id,
+      role: user.role,
+      action: 'auth.google_callback',
+      entityType: 'User',
+      entityId: user.id,
+      metaJson: { state: params.state ?? null },
+    });
+
+    return this.issueTokens({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+  }
+
   private async issueTokens(user: { id: string; email: string; role: Role }) {
     const jti = randomUUID();
     const refreshExpiry = this.parseExpiryMs(

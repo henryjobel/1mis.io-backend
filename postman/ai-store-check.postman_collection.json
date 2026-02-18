@@ -1,0 +1,71 @@
+{
+  "info": {
+    "name": "AI Store Check",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "AI - Apply Job",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+            "var jsonData = pm.response.json();",
+            "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+            "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+          ]
+        }
+      }],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {"mode":"raw","raw":"{\n  \"replaceProducts\": true\n}"},
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/ai/jobs/{{jobId}}/apply"
+      }
+    },
+    {
+      "name": "Store - Content",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+            "var jsonData = pm.response.json();",
+            "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+          ]
+        }
+      }],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/content"
+      }
+    },
+    {
+      "name": "Store - Products",
+      "event": [{
+        "listen": "test",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+            "var jsonData = pm.response.json();",
+            "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+            "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+          ]
+        }
+      }],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/products"
+      }
+    }
+  ]
+}

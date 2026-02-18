@@ -112,6 +112,13 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateFlagDto.prototype, "description", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    (0, class_validator_1.Max)(100),
+    __metadata("design:type", Number)
+], UpdateFlagDto.prototype, "rolloutPct", void 0);
 class UpdateSettingDto {
 }
 __decorate([
@@ -124,12 +131,55 @@ __decorate([
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
 ], UpsertSettingsBatchDto.prototype, "values", void 0);
+class SubscriptionUpdateDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SubscriptionUpdateDto.prototype, "plan", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['active', 'trial', 'past_due', 'cancelled']),
+    __metadata("design:type", String)
+], SubscriptionUpdateDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], SubscriptionUpdateDto.prototype, "nextBillingDate", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], SubscriptionUpdateDto.prototype, "expiryDate", void 0);
+class UpdateAdminStatusDto {
+}
+__decorate([
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateAdminStatusDto.prototype, "isActive", void 0);
+class OverviewMetricsQueryDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], OverviewMetricsQueryDto.prototype, "from", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], OverviewMetricsQueryDto.prototype, "to", void 0);
 let SuperAdminController = class SuperAdminController {
     constructor(superAdminService) {
         this.superAdminService = superAdminService;
     }
     overview() {
         return this.superAdminService.overview();
+    }
+    overviewMetrics(query) {
+        return this.superAdminService.overviewMetrics(query.from, query.to);
     }
     stores() {
         return this.superAdminService.stores();
@@ -152,11 +202,35 @@ let SuperAdminController = class SuperAdminController {
     inviteAdmin(dto, user) {
         return this.superAdminService.inviteAdmin(dto, user);
     }
+    updateAdminStatus(id, dto, user) {
+        return this.superAdminService.updateAdminStatus(id, dto.isActive, user);
+    }
+    resetAdminPassword(id, user) {
+        return this.superAdminService.resetAdminPassword(id, user);
+    }
+    resendAdminInvite(id, user) {
+        return this.superAdminService.resendAdminInvite(id, user);
+    }
     subscriptions() {
         return this.superAdminService.subscriptions();
     }
+    subscriptionByStore(storeId) {
+        return this.superAdminService.subscriptionByStore(storeId);
+    }
+    updateSubscription(storeId, dto, user) {
+        return this.superAdminService.updateSubscription(storeId, dto, user);
+    }
+    retrySubscription(storeId, user) {
+        return this.superAdminService.retrySubscription(storeId, user);
+    }
+    cancelSubscription(storeId, user) {
+        return this.superAdminService.cancelSubscription(storeId, user);
+    }
     paymentOps() {
         return this.superAdminService.paymentOps();
+    }
+    paymentOpsMetrics() {
+        return this.superAdminService.paymentOpsMetrics();
     }
     paymentOpsByStore(storeId) {
         return this.superAdminService.paymentOpsByStore(storeId);
@@ -186,7 +260,7 @@ let SuperAdminController = class SuperAdminController {
         return this.superAdminService.flags();
     }
     upsertFlag(key, dto, user) {
-        return this.superAdminService.upsertFlag(key, dto.enabled, dto.description, user);
+        return this.superAdminService.upsertFlag(key, dto.enabled, dto.description, dto.rolloutPct, user);
     }
     auditLogs() {
         return this.superAdminService.auditLogs();
@@ -209,6 +283,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "overview", null);
+__decorate([
+    (0, common_1.Get)('overview/metrics'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops, client_1.Role.finance),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [OverviewMetricsQueryDto]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "overviewMetrics", null);
 __decorate([
     (0, common_1.Get)('stores'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops, client_1.Role.support),
@@ -268,6 +350,34 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "inviteAdmin", null);
 __decorate([
+    (0, common_1.Patch)('admins/:id/status'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateAdminStatusDto, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "updateAdminStatus", null);
+__decorate([
+    (0, common_1.Post)('admins/:id/reset-password'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "resetAdminPassword", null);
+__decorate([
+    (0, common_1.Post)('admins/:id/resend-invite'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "resendAdminInvite", null);
+__decorate([
     (0, common_1.Get)('subscriptions'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),
     __metadata("design:type", Function),
@@ -275,12 +385,55 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "subscriptions", null);
 __decorate([
+    (0, common_1.Get)('subscriptions/:storeId'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),
+    __param(0, (0, common_1.Param)('storeId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "subscriptionByStore", null);
+__decorate([
+    (0, common_1.Patch)('subscriptions/:storeId'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),
+    __param(0, (0, common_1.Param)('storeId')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, SubscriptionUpdateDto, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "updateSubscription", null);
+__decorate([
+    (0, common_1.Post)('subscriptions/:storeId/retry'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),
+    __param(0, (0, common_1.Param)('storeId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "retrySubscription", null);
+__decorate([
+    (0, common_1.Post)('subscriptions/:storeId/cancel'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),
+    __param(0, (0, common_1.Param)('storeId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "cancelSubscription", null);
+__decorate([
     (0, common_1.Get)('payment-ops'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "paymentOps", null);
+__decorate([
+    (0, common_1.Get)('payment-ops/metrics'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance, client_1.Role.ops),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "paymentOpsMetrics", null);
 __decorate([
     (0, common_1.Get)('payment-ops/:storeId'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),

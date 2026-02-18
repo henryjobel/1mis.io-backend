@@ -175,6 +175,48 @@ let AuthService = class AuthService {
             },
         });
     }
+    googleStart(redirectUri) {
+        const fakeState = (0, crypto_1.randomUUID)();
+        const callback = redirectUri?.trim() || 'http://localhost:4000/api/auth/google/callback';
+        return {
+            provider: 'google',
+            authUrl: `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&scope=openid%20email%20profile&state=${fakeState}&redirect_uri=${encodeURIComponent(callback)}`,
+            state: fakeState,
+            note: 'Use callback endpoint with code/state for local simulation',
+        };
+    }
+    async googleCallback(params) {
+        if (!params.code && !params.email) {
+            throw new common_1.UnauthorizedException('Missing OAuth code or email');
+        }
+        const normalizedEmail = params.email?.trim().toLowerCase() || `google_user_${Date.now()}@1mis.io`;
+        let user = await this.prisma.user.findUnique({
+            where: { email: normalizedEmail },
+        });
+        if (!user) {
+            user = await this.prisma.user.create({
+                data: {
+                    name: normalizedEmail.split('@')[0],
+                    email: normalizedEmail,
+                    passwordHash: await (0, bcrypt_1.hash)((0, crypto_1.randomUUID)(), 10),
+                    role: client_1.Role.owner,
+                },
+            });
+        }
+        await this.auditService.log({
+            actorUserId: user.id,
+            role: user.role,
+            action: 'auth.google_callback',
+            entityType: 'User',
+            entityId: user.id,
+            metaJson: { state: params.state ?? null },
+        });
+        return this.issueTokens({
+            id: user.id,
+            email: user.email,
+            role: user.role,
+        });
+    }
     async issueTokens(user) {
         const jti = (0, crypto_1.randomUUID)();
         const refreshExpiry = this.parseExpiryMs(this.configService.get('JWT_REFRESH_EXPIRES_IN', '7d'), 1000 * 60 * 60 * 24 * 7);

@@ -28,6 +28,34 @@ let SuperAdminService = class SuperAdminService {
         ]);
         return { stores, users, orders, aiJobs };
     }
+    async overviewMetrics(from, to) {
+        const createdAt = from || to
+            ? {
+                ...(from ? { gte: new Date(from) } : {}),
+                ...(to ? { lte: new Date(to) } : {}),
+            }
+            : undefined;
+        const where = createdAt ? { createdAt } : undefined;
+        const [totalRevenue, totalOrders, activeStores, failedPayments] = await Promise.all([
+            this.prisma.order.aggregate({ where, _sum: { total: true } }),
+            this.prisma.order.count({ where }),
+            this.prisma.store.count({ where: { status: client_1.StoreStatus.active } }),
+            this.prisma.paymentTransaction.count({
+                where: {
+                    ...(createdAt ? { createdAt } : {}),
+                    status: { in: ['failed', 'cancelled'] },
+                },
+            }),
+        ]);
+        return {
+            from: from ?? null,
+            to: to ?? null,
+            totalRevenue: totalRevenue._sum.total ?? 0,
+            totalOrders,
+            activeStores,
+            failedPayments,
+        };
+    }
     stores() {
         return this.prisma.store.findMany({ orderBy: { createdAt: 'desc' } });
     }
@@ -113,14 +141,149 @@ let SuperAdminService = class SuperAdminService {
         });
         return admin;
     }
-    subscriptions() {
+    async updateAdminStatus(id, isActive, actor) {
+        const admin = await this.prisma.user.update({
+            where: { id },
+            data: { isActive },
+            select: { id: true, name: true, email: true, role: true, isActive: true },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'super_admin.admin.status',
+            entityType: 'User',
+            entityId: id,
+            metaJson: { isActive },
+        });
+        return admin;
+    }
+    async resetAdminPassword(id, actor) {
+        const token = `reset-${Date.now().toString(36)}`;
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'super_admin.admin.reset_password',
+            entityType: 'User',
+            entityId: id,
+        });
+        return { id, resetToken: token, simulated: true };
+    }
+    async resendAdminInvite(id, actor) {
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'super_admin.admin.resend_invite',
+            entityType: 'User',
+            entityId: id,
+        });
+        return { id, resent: true, simulated: true };
+    }
+    async subscriptions() {
+        const stores = await this.prisma.store.findMany({
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, name: true, createdAt: true },
+        });
+        const settings = await this.prisma.platformSetting.findMany({
+            where: { key: { startsWith: 'subscription:' } },
+        });
+        const map = new Map(settings.map((s) => [s.key.replace('subscription:', ''), s.valueJson]));
+        return stores.map((store) => ({
+            storeId: store.id,
+            storeName: store.name,
+            subscription: map.get(store.id) ?? {
+                plan: 'starter',
+                status: 'trial',
+                nextBillingDate: null,
+                expiryDate: null,
+            },
+            createdAt: store.createdAt,
+        }));
+    }
+    async subscriptionByStore(storeId) {
+        const store = await this.prisma.store.findUnique({
+            where: { id: storeId },
+        });
+        if (!store)
+            throw new common_1.NotFoundException('Store not found');
+        const setting = await this.prisma.platformSetting.findUnique({
+            where: { key: `subscription:${storeId}` },
+        });
         return {
-            plans: ['starter', 'growth', 'scale'],
-            note: 'Subscription engine placeholder',
+            storeId,
+            storeName: store.name,
+            subscription: setting?.valueJson ?? {
+                plan: 'starter',
+                status: 'trial',
+            },
         };
     }
-    paymentOps() {
-        return { status: 'ok', message: 'Global payment operations placeholder' };
+    async updateSubscription(storeId, payload, actor) {
+        const existing = await this.prisma.platformSetting.findUnique({
+            where: { key: `subscription:${storeId}` },
+        });
+        const current = existing?.valueJson ?? {};
+        const next = {
+            ...current,
+            ...payload,
+            updatedAt: new Date().toISOString(),
+        };
+        const saved = await this.prisma.platformSetting.upsert({
+            where: { key: `subscription:${storeId}` },
+            create: {
+                key: `subscription:${storeId}`,
+                valueJson: next,
+            },
+            update: { valueJson: next },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'super_admin.subscription.update',
+            entityType: 'PlatformSetting',
+            entityId: saved.key,
+            metaJson: { storeId },
+        });
+        return saved;
+    }
+    async retrySubscription(storeId, actor) {
+        const result = await this.updateSubscription(storeId, {
+            status: 'active',
+            nextBillingDate: new Date(Date.now() + 86_400_000 * 30).toISOString(),
+        }, actor);
+        return { retried: true, storeId, result };
+    }
+    async cancelSubscription(storeId, actor) {
+        const result = await this.updateSubscription(storeId, { status: 'cancelled' }, actor);
+        return { cancelled: true, storeId, result };
+    }
+    async paymentOps() {
+        const rows = await this.prisma.platformSetting.findMany({
+            where: { key: { startsWith: 'payment_ops:' } },
+            orderBy: { key: 'asc' },
+        });
+        return rows.map((row) => ({
+            storeId: row.key.replace('payment_ops:', ''),
+            ...row.valueJson,
+        }));
+    }
+    async paymentOpsMetrics() {
+        const [total, failed, succeeded] = await Promise.all([
+            this.prisma.paymentTransaction.count(),
+            this.prisma.paymentTransaction.count({
+                where: { status: { in: ['failed', 'cancelled'] } },
+            }),
+            this.prisma.paymentTransaction.count({
+                where: { status: { in: ['succeeded', 'paid'] } },
+            }),
+        ]);
+        const successRate = total
+            ? Number(((succeeded / total) * 100).toFixed(2))
+            : 0;
+        return {
+            totalTransactions: total,
+            failedTransactions: failed,
+            successRatePct: successRate,
+        };
     }
     async paymentOpsByStore(storeId) {
         const config = await this.prisma.platformSetting.findUnique({
@@ -211,11 +374,15 @@ let SuperAdminService = class SuperAdminService {
     flags() {
         return this.prisma.featureFlag.findMany({ orderBy: { key: 'asc' } });
     }
-    async upsertFlag(key, enabled, description, actor) {
+    async upsertFlag(key, enabled, description, rolloutPct, actor) {
         const flag = await this.prisma.featureFlag.upsert({
             where: { key },
-            create: { key, enabled, description },
-            update: { enabled, description },
+            create: { key, enabled, description, rolloutPct: rolloutPct ?? 100 },
+            update: {
+                enabled,
+                description,
+                ...(rolloutPct !== undefined ? { rolloutPct } : {}),
+            },
         });
         await this.auditService.log({
             actorUserId: actor.id,
@@ -223,7 +390,7 @@ let SuperAdminService = class SuperAdminService {
             action: 'super_admin.flag.upsert',
             entityType: 'FeatureFlag',
             entityId: key,
-            metaJson: { enabled },
+            metaJson: { enabled, rolloutPct: rolloutPct ?? flag.rolloutPct },
         });
         return flag;
     }

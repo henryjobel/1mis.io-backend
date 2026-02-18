@@ -10,7 +10,7 @@
     { "key": "accessToken", "value": "" },
     { "key": "storeId", "value": "" },
     { "key": "jobId", "value": "" },
-    { "key": "ownerEmail", "value": "henryowner@example.com" },
+    { "key": "ownerEmail", "value": "henryowner+{{$timestamp}}@example.com" },
     { "key": "ownerPassword", "value": "123456" }
   ],
   "item": [
@@ -38,8 +38,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "const data = pm.response.json();",
-              "if (data.accessToken) pm.collectionVariables.set('accessToken', data.accessToken);"
+              "var jsonData = pm.response.json();",
+              "if (jsonData.accessToken) pm.collectionVariables.set('accessToken', jsonData.accessToken);"
             ]
           }
         }
@@ -70,8 +70,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "const data = pm.response.json();",
-              "if (data.id) pm.collectionVariables.set('storeId', data.id);"
+              "var jsonData = pm.response.json();",
+              "if (jsonData.id) pm.collectionVariables.set('storeId', jsonData.id);"
             ]
           }
         }
@@ -97,8 +97,8 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "const data = pm.response.json();",
-              "if (data.id) pm.collectionVariables.set('jobId', data.id);"
+              "var jsonData = pm.response.json();",
+              "if (jsonData.id) pm.collectionVariables.set('jobId', jsonData.id);"
             ]
           }
         }

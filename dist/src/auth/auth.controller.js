@@ -45,6 +45,12 @@ let AuthController = class AuthController {
     resetPassword(dto) {
         return this.authService.resetPassword(dto);
     }
+    googleStart(redirectUri) {
+        return this.authService.googleStart(redirectUri);
+    }
+    googleCallback(code, state, email) {
+        return this.authService.googleCallback({ code, state, email });
+    }
     me(user) {
         return this.authService.me(user.id);
     }
@@ -92,6 +98,22 @@ __decorate([
     __metadata("design:paramtypes", [reset_password_dto_1.ResetPasswordDto]),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "resetPassword", null);
+__decorate([
+    (0, common_1.Get)('google/start'),
+    __param(0, (0, common_1.Query)('redirectUri')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "googleStart", null);
+__decorate([
+    (0, common_1.Get)('google/callback'),
+    __param(0, (0, common_1.Query)('code')),
+    __param(1, (0, common_1.Query)('state')),
+    __param(2, (0, common_1.Query)('email')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], AuthController.prototype, "googleCallback", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('me'),

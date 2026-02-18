@@ -29,12 +29,26 @@ declare class UpdateTicketDto {
 declare class UpdateFlagDto {
     enabled: boolean;
     description?: string;
+    rolloutPct?: number;
 }
 declare class UpdateSettingDto {
     valueJson: Record<string, unknown>;
 }
 declare class UpsertSettingsBatchDto {
     values: Record<string, Record<string, unknown>>;
+}
+declare class SubscriptionUpdateDto {
+    plan?: string;
+    status?: 'active' | 'trial' | 'past_due' | 'cancelled';
+    nextBillingDate?: string;
+    expiryDate?: string;
+}
+declare class UpdateAdminStatusDto {
+    isActive: boolean;
+}
+declare class OverviewMetricsQueryDto {
+    from?: string;
+    to?: string;
 }
 export declare class SuperAdminController {
     private readonly superAdminService;
@@ -44,6 +58,14 @@ export declare class SuperAdminController {
         users: number;
         orders: number;
         aiJobs: number;
+    }>;
+    overviewMetrics(query: OverviewMetricsQueryDto): Promise<{
+        from: string | null;
+        to: string | null;
+        totalRevenue: number | import("@prisma/client/runtime/library").Decimal;
+        totalOrders: number;
+        activeStores: number;
+        failedPayments: number;
     }>;
     stores(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
@@ -103,14 +125,65 @@ export declare class SuperAdminController {
         name: string;
         role: import(".prisma/client").$Enums.Role;
     }>;
-    subscriptions(): {
-        plans: string[];
-        note: string;
-    };
-    paymentOps(): {
-        status: string;
-        message: string;
-    };
+    updateAdminStatus(id: string, dto: UpdateAdminStatusDto, user: RequestUser): Promise<{
+        id: string;
+        email: string;
+        name: string;
+        role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
+    }>;
+    resetAdminPassword(id: string, user: RequestUser): Promise<{
+        id: string;
+        resetToken: string;
+        simulated: boolean;
+    }>;
+    resendAdminInvite(id: string, user: RequestUser): Promise<{
+        id: string;
+        resent: boolean;
+        simulated: boolean;
+    }>;
+    subscriptions(): Promise<{
+        storeId: string;
+        storeName: string;
+        subscription: Record<string, unknown>;
+        createdAt: Date;
+    }[]>;
+    subscriptionByStore(storeId: string): Promise<{
+        storeId: string;
+        storeName: string;
+        subscription: Record<string, unknown>;
+    }>;
+    updateSubscription(storeId: string, dto: SubscriptionUpdateDto, user: RequestUser): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: import("@prisma/client/runtime/library").JsonValue;
+    }>;
+    retrySubscription(storeId: string, user: RequestUser): Promise<{
+        retried: boolean;
+        storeId: string;
+        result: {
+            updatedAt: Date;
+            key: string;
+            valueJson: import("@prisma/client/runtime/library").JsonValue;
+        };
+    }>;
+    cancelSubscription(storeId: string, user: RequestUser): Promise<{
+        cancelled: boolean;
+        storeId: string;
+        result: {
+            updatedAt: Date;
+            key: string;
+            valueJson: import("@prisma/client/runtime/library").JsonValue;
+        };
+    }>;
+    paymentOps(): Promise<{
+        storeId: string;
+    }[]>;
+    paymentOpsMetrics(): Promise<{
+        totalTransactions: number;
+        failedTransactions: number;
+        successRatePct: number;
+    }>;
     paymentOpsByStore(storeId: string): Promise<{
         storeId: string;
         config: string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray | null;
@@ -152,15 +225,17 @@ export declare class SuperAdminController {
     }>;
     flags(): import(".prisma/client").Prisma.PrismaPromise<{
         updatedAt: Date;
-        description: string | null;
         key: string;
+        description: string | null;
         enabled: boolean;
+        rolloutPct: number;
     }[]>;
     upsertFlag(key: string, dto: UpdateFlagDto, user: RequestUser): Promise<{
         updatedAt: Date;
-        description: string | null;
         key: string;
+        description: string | null;
         enabled: boolean;
+        rolloutPct: number;
     }>;
     auditLogs(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;

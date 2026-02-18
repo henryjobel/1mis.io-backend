@@ -7,6 +7,10 @@ declare class GenerateAiDto {
 declare class ApplyAiJobDto {
     replaceProducts?: boolean;
 }
+declare class SavePromptDto {
+    prompt: string;
+    title?: string;
+}
 export declare class AiGenerationController {
     private readonly aiGenerationService;
     constructor(aiGenerationService: AiGenerationService);
@@ -53,6 +57,21 @@ export declare class AiGenerationController {
         sections: string[];
         jobId: string;
         applied: boolean;
+    }>;
+    prompts(storeId: string): Promise<{
+        id: string;
+    }[]>;
+    savePrompt(storeId: string, dto: SavePromptDto, user: RequestUser): Promise<{
+        title: string;
+        prompt: string;
+        createdBy: string;
+        createdAt: string;
+        id: `${string}-${string}-${string}-${string}-${string}`;
+    }>;
+    replayPrompt(storeId: string, promptId: string, user: RequestUser): Promise<{
+        jobId: string;
+        promptId: string;
+        title: string | null;
     }>;
 }
 export {};

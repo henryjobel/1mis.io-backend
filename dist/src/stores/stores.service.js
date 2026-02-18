@@ -134,6 +134,167 @@ let StoresService = class StoresService {
         });
         return theme;
     }
+    async getMarketing(storeId) {
+        const row = await this.prisma.platformSetting.findUnique({
+            where: { key: `marketing:${storeId}` },
+        });
+        return row?.valueJson ?? {};
+    }
+    async upsertMarketing(storeId, data, actor) {
+        const saved = await this.prisma.platformSetting.upsert({
+            where: { key: `marketing:${storeId}` },
+            create: {
+                key: `marketing:${storeId}`,
+                valueJson: data,
+            },
+            update: { valueJson: data },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'store.marketing.update',
+            entityType: 'PlatformSetting',
+            entityId: saved.key,
+            metaJson: { storeId },
+        });
+        return saved;
+    }
+    async getContent(storeId) {
+        const row = await this.prisma.platformSetting.findUnique({
+            where: { key: `store_content:${storeId}` },
+        });
+        return row?.valueJson ?? {};
+    }
+    async upsertContent(storeId, data, actor) {
+        const saved = await this.prisma.platformSetting.upsert({
+            where: { key: `store_content:${storeId}` },
+            create: {
+                key: `store_content:${storeId}`,
+                valueJson: data,
+            },
+            update: { valueJson: data },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'store.content.update',
+            entityType: 'PlatformSetting',
+            entityId: saved.key,
+            metaJson: { storeId },
+        });
+        return saved;
+    }
+    async connectDomain(storeId, domain, actor) {
+        const value = {
+            domain,
+            domainStatus: 'verifying',
+            sslStatus: 'pending',
+            connectedAt: new Date().toISOString(),
+        };
+        const saved = await this.prisma.platformSetting.upsert({
+            where: { key: `domain:${storeId}` },
+            create: {
+                key: `domain:${storeId}`,
+                valueJson: value,
+            },
+            update: { valueJson: value },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'store.domain.connect',
+            entityType: 'PlatformSetting',
+            entityId: saved.key,
+            metaJson: { storeId, domain },
+        });
+        return saved;
+    }
+    async verifyDomain(storeId, actor) {
+        const existing = await this.prisma.platformSetting.findUnique({
+            where: { key: `domain:${storeId}` },
+        });
+        const current = existing?.valueJson ?? {};
+        const next = {
+            ...current,
+            domainStatus: 'connected',
+            verifiedAt: new Date().toISOString(),
+        };
+        const saved = await this.prisma.platformSetting.upsert({
+            where: { key: `domain:${storeId}` },
+            create: {
+                key: `domain:${storeId}`,
+                valueJson: next,
+            },
+            update: { valueJson: next },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'store.domain.verify',
+            entityType: 'PlatformSetting',
+            entityId: saved.key,
+            metaJson: { storeId },
+        });
+        return saved;
+    }
+    async buyDomain(storeId, data, actor) {
+        const value = {
+            domain: data.domain,
+            purchased: true,
+            purchasedAt: new Date().toISOString(),
+            domainStatus: data.autoConnect ? 'verifying' : 'not_connected',
+            sslStatus: 'pending',
+        };
+        const saved = await this.prisma.platformSetting.upsert({
+            where: { key: `domain:${storeId}` },
+            create: {
+                key: `domain:${storeId}`,
+                valueJson: value,
+            },
+            update: { valueJson: value },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'store.domain.buy',
+            entityType: 'PlatformSetting',
+            entityId: saved.key,
+            metaJson: {
+                storeId,
+                domain: data.domain,
+                autoConnect: data.autoConnect ?? false,
+            },
+        });
+        return saved;
+    }
+    async refreshSsl(storeId, actor) {
+        const existing = await this.prisma.platformSetting.findUnique({
+            where: { key: `domain:${storeId}` },
+        });
+        const current = existing?.valueJson ?? {};
+        const next = {
+            ...current,
+            sslStatus: 'active',
+            sslRefreshedAt: new Date().toISOString(),
+        };
+        const saved = await this.prisma.platformSetting.upsert({
+            where: { key: `domain:${storeId}` },
+            create: {
+                key: `domain:${storeId}`,
+                valueJson: next,
+            },
+            update: { valueJson: next },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'store.ssl.refresh',
+            entityType: 'PlatformSetting',
+            entityId: saved.key,
+            metaJson: { storeId },
+        });
+        return saved;
+    }
     async assertStoreAccess(storeId, user) {
         if (SUPER_ROLES.includes(user.role))
             return;

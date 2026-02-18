@@ -86,6 +86,112 @@ __decorate([
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
 ], UpdateThemeDto.prototype, "customJson", void 0);
+class UpdateMarketingDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateMarketingDto.prototype, "facebookPageId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateMarketingDto.prototype, "businessManagerId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateMarketingDto.prototype, "adAccountId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateMarketingDto.prototype, "catalogId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateMarketingDto.prototype, "productFeedUrl", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateMarketingDto.prototype, "metaPixelId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateMarketingDto.prototype, "conversionApiToken", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateMarketingDto.prototype, "gtmId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateMarketingDto.prototype, "isDomainVerified", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateMarketingDto.prototype, "isShopConnected", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateMarketingDto.prototype, "isPixelEnabled", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateMarketingDto.prototype, "isCapiEnabled", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], UpdateMarketingDto.prototype, "isGtmEnabled", void 0);
+class UpdateContentDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsObject)(),
+    __metadata("design:type", Object)
+], UpdateContentDto.prototype, "hero", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsObject)(),
+    __metadata("design:type", Object)
+], UpdateContentDto.prototype, "navigation", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsObject)(),
+    __metadata("design:type", Object)
+], UpdateContentDto.prototype, "footer", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsObject)(),
+    __metadata("design:type", Object)
+], UpdateContentDto.prototype, "sections", void 0);
+class ConnectDomainDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ConnectDomainDto.prototype, "domain", void 0);
+class BuyDomainDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], BuyDomainDto.prototype, "domain", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], BuyDomainDto.prototype, "autoConnect", void 0);
 let StoresController = class StoresController {
     constructor(storesService) {
         this.storesService = storesService;
@@ -110,6 +216,30 @@ let StoresController = class StoresController {
     }
     updateTheme(id, dto, user) {
         return this.storesService.upsertTheme(id, dto, user);
+    }
+    getMarketing(id) {
+        return this.storesService.getMarketing(id);
+    }
+    upsertMarketing(id, dto, user) {
+        return this.storesService.upsertMarketing(id, dto, user);
+    }
+    getContent(id) {
+        return this.storesService.getContent(id);
+    }
+    upsertContent(id, dto, user) {
+        return this.storesService.upsertContent(id, dto, user);
+    }
+    connectDomain(id, dto, user) {
+        return this.storesService.connectDomain(id, dto.domain, user);
+    }
+    verifyDomain(id, user) {
+        return this.storesService.verifyDomain(id, user);
+    }
+    buyDomain(id, dto, user) {
+        return this.storesService.buyDomain(id, dto, user);
+    }
+    refreshSsl(id, user) {
+        return this.storesService.refreshSsl(id, user);
     }
 };
 exports.StoresController = StoresController;
@@ -175,6 +305,80 @@ __decorate([
     __metadata("design:paramtypes", [String, UpdateThemeDto, Object]),
     __metadata("design:returntype", void 0)
 ], StoresController.prototype, "updateTheme", null);
+__decorate([
+    (0, common_1.UseGuards)(store_access_guard_1.StoreAccessGuard),
+    (0, common_1.Get)(':id/marketing'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "getMarketing", null);
+__decorate([
+    (0, common_1.UseGuards)(store_access_guard_1.StoreAccessGuard),
+    (0, common_1.Patch)(':id/marketing'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateMarketingDto, Object]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "upsertMarketing", null);
+__decorate([
+    (0, common_1.UseGuards)(store_access_guard_1.StoreAccessGuard),
+    (0, common_1.Get)(':id/content'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "getContent", null);
+__decorate([
+    (0, common_1.UseGuards)(store_access_guard_1.StoreAccessGuard),
+    (0, common_1.Patch)(':id/content'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateContentDto, Object]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "upsertContent", null);
+__decorate([
+    (0, common_1.UseGuards)(store_access_guard_1.StoreAccessGuard),
+    (0, common_1.Post)(':id/domain/connect'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, ConnectDomainDto, Object]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "connectDomain", null);
+__decorate([
+    (0, common_1.UseGuards)(store_access_guard_1.StoreAccessGuard),
+    (0, common_1.Post)(':id/domain/verify'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "verifyDomain", null);
+__decorate([
+    (0, common_1.UseGuards)(store_access_guard_1.StoreAccessGuard),
+    (0, common_1.Post)(':id/domain/buy'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, BuyDomainDto, Object]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "buyDomain", null);
+__decorate([
+    (0, common_1.UseGuards)(store_access_guard_1.StoreAccessGuard),
+    (0, common_1.Post)(':id/ssl/refresh'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], StoresController.prototype, "refreshSsl", null);
 exports.StoresController = StoresController = __decorate([
     (0, common_1.Controller)('api/stores'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

@@ -11,6 +11,14 @@ export declare class SuperAdminService {
         orders: number;
         aiJobs: number;
     }>;
+    overviewMetrics(from?: string, to?: string): Promise<{
+        from: string | null;
+        to: string | null;
+        totalRevenue: number | Prisma.Decimal;
+        totalOrders: number;
+        activeStores: number;
+        failedPayments: number;
+    }>;
     stores(): Prisma.PrismaPromise<{
         id: string;
         name: string;
@@ -87,14 +95,88 @@ export declare class SuperAdminService {
         name: string;
         role: import(".prisma/client").$Enums.Role;
     }>;
-    subscriptions(): {
-        plans: string[];
-        note: string;
-    };
-    paymentOps(): {
-        status: string;
-        message: string;
-    };
+    updateAdminStatus(id: string, isActive: boolean, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        id: string;
+        email: string;
+        name: string;
+        role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
+    }>;
+    resetAdminPassword(id: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        id: string;
+        resetToken: string;
+        simulated: boolean;
+    }>;
+    resendAdminInvite(id: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        id: string;
+        resent: boolean;
+        simulated: boolean;
+    }>;
+    subscriptions(): Promise<{
+        storeId: string;
+        storeName: string;
+        subscription: Record<string, unknown>;
+        createdAt: Date;
+    }[]>;
+    subscriptionByStore(storeId: string): Promise<{
+        storeId: string;
+        storeName: string;
+        subscription: Record<string, unknown>;
+    }>;
+    updateSubscription(storeId: string, payload: {
+        plan?: string;
+        status?: 'active' | 'trial' | 'past_due' | 'cancelled';
+        nextBillingDate?: string;
+        expiryDate?: string;
+    }, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: Prisma.JsonValue;
+    }>;
+    retrySubscription(storeId: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        retried: boolean;
+        storeId: string;
+        result: {
+            updatedAt: Date;
+            key: string;
+            valueJson: Prisma.JsonValue;
+        };
+    }>;
+    cancelSubscription(storeId: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        cancelled: boolean;
+        storeId: string;
+        result: {
+            updatedAt: Date;
+            key: string;
+            valueJson: Prisma.JsonValue;
+        };
+    }>;
+    paymentOps(): Promise<{
+        storeId: string;
+    }[]>;
+    paymentOpsMetrics(): Promise<{
+        totalTransactions: number;
+        failedTransactions: number;
+        successRatePct: number;
+    }>;
     paymentOpsByStore(storeId: string): Promise<{
         storeId: string;
         config: string | number | boolean | Prisma.JsonObject | Prisma.JsonArray | null;
@@ -151,18 +233,20 @@ export declare class SuperAdminService {
     }>;
     flags(): Prisma.PrismaPromise<{
         updatedAt: Date;
-        description: string | null;
         key: string;
+        description: string | null;
         enabled: boolean;
+        rolloutPct: number;
     }[]>;
-    upsertFlag(key: string, enabled: boolean, description: string | undefined, actor: {
+    upsertFlag(key: string, enabled: boolean, description: string | undefined, rolloutPct: number | undefined, actor: {
         id: string;
         role: Role;
     }): Promise<{
         updatedAt: Date;
-        description: string | null;
         key: string;
+        description: string | null;
         enabled: boolean;
+        rolloutPct: number;
     }>;
     auditLogs(): Prisma.PrismaPromise<{
         id: string;

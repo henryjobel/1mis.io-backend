@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiJobStatus, Prisma, Role } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -198,6 +199,90 @@ export class AiGenerationService implements OnModuleInit {
     };
   }
 
+  async listPrompts(storeId: string) {
+    const rows = await this.prisma.platformSetting.findMany({
+      where: { key: { startsWith: `ai_prompt:${storeId}:` } },
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+    });
+
+    return rows.map((row) => {
+      const payload = row.valueJson as Record<string, unknown>;
+      return {
+        id: row.key.replace(`ai_prompt:${storeId}:`, ''),
+        ...(payload ?? {}),
+      };
+    });
+  }
+
+  async savePrompt(
+    storeId: string,
+    data: { prompt: string; title?: string },
+    actor: { id: string; role: Role },
+  ) {
+    const promptId = randomUUID();
+    const payload = {
+      title: data.title ?? `Prompt ${new Date().toISOString()}`,
+      prompt: data.prompt,
+      createdBy: actor.id,
+      createdAt: new Date().toISOString(),
+    };
+
+    const saved = await this.prisma.platformSetting.create({
+      data: {
+        key: `ai_prompt:${storeId}:${promptId}`,
+        valueJson: payload as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'ai.prompt.save',
+      entityType: 'PlatformSetting',
+      entityId: saved.key,
+      metaJson: { storeId, promptId },
+    });
+
+    return { id: promptId, ...payload };
+  }
+
+  async replayPrompt(
+    storeId: string,
+    promptId: string,
+    actor: { id: string; role: Role },
+  ) {
+    const row = await this.prisma.platformSetting.findUnique({
+      where: { key: `ai_prompt:${storeId}:${promptId}` },
+    });
+    if (!row) throw new NotFoundException('Prompt not found');
+    const payload = row.valueJson as { prompt?: string; title?: string } | null;
+    if (!payload?.prompt)
+      throw new BadRequestException('Prompt payload invalid');
+
+    const job = await this.createJob({
+      storeId,
+      requestedBy: actor.id,
+      prompt: payload.prompt,
+      inputImagesJson: [],
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'ai.prompt.replay',
+      entityType: 'AiGenerationJob',
+      entityId: job.id,
+      metaJson: { storeId, promptId },
+    });
+
+    return {
+      jobId: job.id,
+      promptId,
+      title: payload.title ?? null,
+    };
+  }
+
   private async processJob(jobId: string) {
     await this.prisma.aiGenerationJob.update({
       where: { id: jobId },
@@ -250,9 +335,6 @@ export class AiGenerationService implements OnModuleInit {
       'GEMINI_MODEL',
       'gemini-1.5-flash',
     );
-    const projectNumber = this.configService.get<string>(
-      'GEMINI_PROJECT_NUMBER',
-    );
     const projectName = this.configService.get<string>('GEMINI_PROJECT_NAME');
     const projectId = this.configService.get<string>('GEMINI_PROJECT_ID');
 
@@ -265,42 +347,49 @@ export class AiGenerationService implements OnModuleInit {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (projectNumber) {
-      headers['x-goog-user-project'] = projectNumber;
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: instruction }] }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 1024,
+            },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text();
+        this.logger.warn(
+          `Gemini unavailable (${response.status}), using fallback result. ${body.slice(0, 300)}`,
+        );
+        return this.fallbackResult(input.prompt);
+      }
+
+      const data = (await response.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) {
+        this.logger.warn('Gemini returned empty response, using fallback result');
+        return this.fallbackResult(input.prompt);
+      }
+
+      const cleaned = this.stripCodeFence(rawText);
+      const parsed = JSON.parse(cleaned) as unknown;
+      return aiResultSchema.parse(parsed);
+    } catch (error) {
+      this.logger.warn(
+        `Gemini request error, using fallback result: ${(error as Error).message}`,
+      );
+      return this.fallbackResult(input.prompt);
     }
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: instruction }] }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 1024,
-          },
-        }),
-      },
-    );
-
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Gemini API failed: ${response.status} ${body}`);
-    }
-
-    const data = (await response.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) {
-      throw new Error('Gemini returned empty response');
-    }
-
-    const cleaned = this.stripCodeFence(rawText);
-    const parsed = JSON.parse(cleaned) as unknown;
-    return aiResultSchema.parse(parsed);
   }
 
   private fallbackResult(prompt: string) {

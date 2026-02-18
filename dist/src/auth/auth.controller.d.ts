@@ -49,6 +49,21 @@ export declare class AuthController {
     resetPassword(dto: ResetPasswordDto): Promise<{
         success: boolean;
     }>;
+    googleStart(redirectUri?: string): {
+        provider: string;
+        authUrl: string;
+        state: `${string}-${string}-${string}-${string}-${string}`;
+        note: string;
+    };
+    googleCallback(code?: string, state?: string, email?: string): Promise<{
+        user: {
+            id: string;
+            email: string;
+            role: import(".prisma/client").Role;
+        };
+        accessToken: string;
+        refreshToken: string;
+    }>;
     me(user: RequestUser): Promise<{
         id: string;
         email: string;

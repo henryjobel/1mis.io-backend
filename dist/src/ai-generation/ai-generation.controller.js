@@ -37,6 +37,17 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], ApplyAiJobDto.prototype, "replaceProducts", void 0);
+class SavePromptDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SavePromptDto.prototype, "prompt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SavePromptDto.prototype, "title", void 0);
 let AiGenerationController = class AiGenerationController {
     constructor(aiGenerationService) {
         this.aiGenerationService = aiGenerationService;
@@ -59,6 +70,15 @@ let AiGenerationController = class AiGenerationController {
         return this.aiGenerationService.applyJobResult(storeId, jobId, user, {
             replaceProducts: dto.replaceProducts ?? false,
         });
+    }
+    prompts(storeId) {
+        return this.aiGenerationService.listPrompts(storeId);
+    }
+    savePrompt(storeId, dto, user) {
+        return this.aiGenerationService.savePrompt(storeId, dto, user);
+    }
+    replayPrompt(storeId, promptId, user) {
+        return this.aiGenerationService.replayPrompt(storeId, promptId, user);
     }
 };
 exports.AiGenerationController = AiGenerationController;
@@ -97,6 +117,31 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Object, ApplyAiJobDto]),
     __metadata("design:returntype", void 0)
 ], AiGenerationController.prototype, "applyJobResult", null);
+__decorate([
+    (0, common_1.Get)('prompts'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "prompts", null);
+__decorate([
+    (0, common_1.Post)('prompts'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, SavePromptDto, Object]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "savePrompt", null);
+__decorate([
+    (0, common_1.Post)('prompts/:promptId/replay'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('promptId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "replayPrompt", null);
 exports.AiGenerationController = AiGenerationController = __decorate([
     (0, common_1.Controller)('api/stores/:id/ai'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, store_access_guard_1.StoreAccessGuard),

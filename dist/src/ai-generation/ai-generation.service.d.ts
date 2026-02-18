@@ -66,6 +66,30 @@ export declare class AiGenerationService implements OnModuleInit {
         jobId: string;
         applied: boolean;
     }>;
+    listPrompts(storeId: string): Promise<{
+        id: string;
+    }[]>;
+    savePrompt(storeId: string, data: {
+        prompt: string;
+        title?: string;
+    }, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        title: string;
+        prompt: string;
+        createdBy: string;
+        createdAt: string;
+        id: `${string}-${string}-${string}-${string}-${string}`;
+    }>;
+    replayPrompt(storeId: string, promptId: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        jobId: string;
+        promptId: string;
+        title: string | null;
+    }>;
     private processJob;
     private generateStorePlan;
     private fallbackResult;

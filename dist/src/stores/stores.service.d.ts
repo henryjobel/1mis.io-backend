@@ -128,6 +128,59 @@ export declare class StoresService {
         preset: string | null;
         customJson: Prisma.JsonValue | null;
     }>;
+    getMarketing(storeId: string): Promise<string | number | boolean | Prisma.JsonObject | Prisma.JsonArray>;
+    upsertMarketing(storeId: string, data: Record<string, unknown>, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: Prisma.JsonValue;
+    }>;
+    getContent(storeId: string): Promise<string | number | boolean | Prisma.JsonObject | Prisma.JsonArray>;
+    upsertContent(storeId: string, data: Record<string, unknown>, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: Prisma.JsonValue;
+    }>;
+    connectDomain(storeId: string, domain: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: Prisma.JsonValue;
+    }>;
+    verifyDomain(storeId: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: Prisma.JsonValue;
+    }>;
+    buyDomain(storeId: string, data: {
+        domain: string;
+        autoConnect?: boolean;
+    }, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: Prisma.JsonValue;
+    }>;
+    refreshSsl(storeId: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        updatedAt: Date;
+        key: string;
+        valueJson: Prisma.JsonValue;
+    }>;
     assertStoreAccess(storeId: string, user: {
         id: string;
         role: Role;

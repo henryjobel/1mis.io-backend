@@ -1,0 +1,2269 @@
+{
+  "collection": {
+    "item": [
+      {
+        "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+        "name": "AI - Apply Job",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "stores",
+              "{{storeId}}",
+              "ai",
+              "jobs",
+              "{{jobId}}",
+              "apply"
+            ],
+            "host": [
+              "{{baseUrl}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"replaceProducts\": true\n}"
+          }
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                "var jsonData = pm.response.json();",
+                "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+              ],
+              "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+            }
+          }
+        ]
+      },
+      {
+        "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+        "name": "Store - Content",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "stores",
+              "{{storeId}}",
+              "content"
+            ],
+            "host": [
+              "{{baseUrl}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "method": "GET"
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "id": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                "var jsonData = pm.response.json();",
+                "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+              ],
+              "_lastExecutionId": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+            }
+          }
+        ]
+      },
+      {
+        "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+        "name": "Store - Products",
+        "request": {
+          "url": {
+            "path": [
+              "api",
+              "stores",
+              "{{storeId}}",
+              "products"
+            ],
+            "host": [
+              "{{baseUrl}}"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{accessToken}}"
+            }
+          ],
+          "method": "GET"
+        },
+        "response": [],
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "id": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                "var jsonData = pm.response.json();",
+                "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+                "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+              ],
+              "_lastExecutionId": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+            }
+          }
+        ]
+      }
+    ],
+    "event": [],
+    "variable": [],
+    "info": {
+      "_postman_id": "079a9d26-4dfa-4873-999d-a27e1aa95aa0",
+      "name": "AI Store Check",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    }
+  },
+  "environment": {
+    "id": "ai-store-check-env",
+    "name": "AI Store Check Env",
+    "values": [
+      {
+        "type": "any",
+        "value": "http://localhost:4000",
+        "key": "baseUrl"
+      },
+      {
+        "type": "any",
+        "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWxzZmg5dHgwMDAwZXdmYTl6bXd3aHBhIiwiZW1haWwiOiJhZG1pbkAxbWlzLmlvIiwicm9sZSI6InN1cGVyX2FkbWluIiwiaWF0IjoxNzcxNDQ5MDc3LCJleHAiOjE3NzE0NDk5Nzd9.pxyMVcQPdNUBrnmsucnPHmPYEUiwC1NC7yaYiq4AIlo",
+        "key": "accessToken"
+      },
+      {
+        "type": "any",
+        "value": "cmlsj1kl7001yx28khedrv3vu",
+        "key": "storeId"
+      },
+      {
+        "type": "any",
+        "value": "cmlsj1kns0022x28kqjyjix6c",
+        "key": "jobId"
+      }
+    ]
+  },
+  "globals": {
+    "id": "6c83acb5-4a63-413e-9800-495a749b0ad1",
+    "values": []
+  },
+  "run": {
+    "stats": {
+      "iterations": {
+        "total": 1,
+        "pending": 0,
+        "failed": 0
+      },
+      "items": {
+        "total": 3,
+        "pending": 0,
+        "failed": 0
+      },
+      "scripts": {
+        "total": 3,
+        "pending": 0,
+        "failed": 0
+      },
+      "prerequests": {
+        "total": 3,
+        "pending": 0,
+        "failed": 0
+      },
+      "requests": {
+        "total": 3,
+        "pending": 0,
+        "failed": 0
+      },
+      "tests": {
+        "total": 3,
+        "pending": 0,
+        "failed": 0
+      },
+      "assertions": {
+        "total": 8,
+        "pending": 0,
+        "failed": 5
+      },
+      "testScripts": {
+        "total": 3,
+        "pending": 0,
+        "failed": 0
+      },
+      "prerequestScripts": {
+        "total": 0,
+        "pending": 0,
+        "failed": 0
+      }
+    },
+    "timings": {
+      "responseAverage": 48.666666666666664,
+      "responseMin": 10,
+      "responseMax": 126,
+      "responseSd": 54.68292441175967,
+      "dnsAverage": 0,
+      "dnsMin": 0,
+      "dnsMax": 0,
+      "dnsSd": 0,
+      "firstByteAverage": 0,
+      "firstByteMin": 0,
+      "firstByteMax": 0,
+      "firstByteSd": 0,
+      "started": 1771449210876,
+      "completed": 1771449211222
+    },
+    "executions": [
+      {
+        "cursor": {
+          "position": 0,
+          "iteration": 0,
+          "length": 3,
+          "cycles": 1,
+          "empty": false,
+          "eof": false,
+          "bof": true,
+          "cr": false,
+          "ref": "25ac2472-c24d-46c7-83d0-bde0d37daac9",
+          "httpRequestId": "bde88e64-3ed9-4871-a387-03d8a7926e55"
+        },
+        "item": {
+          "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+          "name": "AI - Apply Job",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "stores",
+                "{{storeId}}",
+                "ai",
+                "jobs",
+                "{{jobId}}",
+                "apply"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"replaceProducts\": true\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                  "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                ],
+                "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "4000",
+            "path": [
+              "api",
+              "stores",
+              "cmlsj1kl7001yx28khedrv3vu",
+              "ai",
+              "jobs",
+              "cmlsj1kns0022x28kqjyjix6c",
+              "apply"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWxzZmg5dHgwMDAwZXdmYTl6bXd3aHBhIiwiZW1haWwiOiJhZG1pbkAxbWlzLmlvIiwicm9sZSI6InN1cGVyX2FkbWluIiwiaWF0IjoxNzcxNDQ5MDc3LCJleHAiOjE3NzE0NDk5Nzd9.pxyMVcQPdNUBrnmsucnPHmPYEUiwC1NC7yaYiq4AIlo"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "9e9e3300-ff6e-423b-8649-0bde0b764c60",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:4000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            },
+            {
+              "key": "Content-Length",
+              "value": "29",
+              "system": true
+            }
+          ],
+          "method": "POST",
+          "body": {
+            "mode": "raw",
+            "raw": "{\n  \"replaceProducts\": true\n}"
+          }
+        },
+        "response": {
+          "id": "00fd9f12-ce92-40ca-b75f-56d6358c6229",
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "*"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Resource-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Origin-Agent-Cluster",
+              "value": "?1"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "no-referrer"
+            },
+            {
+              "key": "Strict-Transport-Security",
+              "value": "max-age=31536000; includeSubDomains"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-DNS-Prefetch-Control",
+              "value": "off"
+            },
+            {
+              "key": "X-Download-Options",
+              "value": "noopen"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "SAMEORIGIN"
+            },
+            {
+              "key": "X-Permitted-Cross-Domain-Policies",
+              "value": "none"
+            },
+            {
+              "key": "X-XSS-Protection",
+              "value": "0"
+            },
+            {
+              "key": "X-RateLimit-Limit",
+              "value": "120"
+            },
+            {
+              "key": "X-RateLimit-Remaining",
+              "value": "118"
+            },
+            {
+              "key": "X-RateLimit-Reset",
+              "value": "8"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "80"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"50-z3uFWx1J1ChhHrdVDTx63SVdq98\""
+            },
+            {
+              "key": "Date",
+              "value": "Wed, 18 Feb 2026 21:13:31 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              34,
+              109,
+              101,
+              115,
+              115,
+              97,
+              103,
+              101,
+              34,
+              58,
+              34,
+              65,
+              73,
+              32,
+              106,
+              111,
+              98,
+              32,
+              105,
+              115,
+              32,
+              110,
+              111,
+              116,
+              32,
+              99,
+              111,
+              109,
+              112,
+              108,
+              101,
+              116,
+              101,
+              100,
+              32,
+              121,
+              101,
+              116,
+              34,
+              44,
+              34,
+              101,
+              114,
+              114,
+              111,
+              114,
+              34,
+              58,
+              34,
+              66,
+              97,
+              100,
+              32,
+              82,
+              101,
+              113,
+              117,
+              101,
+              115,
+              116,
+              34,
+              44,
+              34,
+              115,
+              116,
+              97,
+              116,
+              117,
+              115,
+              67,
+              111,
+              100,
+              101,
+              34,
+              58,
+              52,
+              48,
+              48,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 126,
+          "responseSize": 80
+        },
+        "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+        "assertions": [
+          {
+            "assertion": "status 201/200",
+            "skipped": false,
+            "error": {
+              "name": "AssertionError",
+              "index": 0,
+              "test": "status 201/200",
+              "message": "expected [ 200, 201 ] to include 400",
+              "stack": "AssertionError: expected [ 200, 201 ] to include 400\n   at Object.eval sandbox-script.js:1:1)"
+            }
+          },
+          {
+            "assertion": "applied true",
+            "skipped": false,
+            "error": {
+              "name": "AssertionError",
+              "index": 1,
+              "test": "applied true",
+              "message": "expected undefined to deeply equal true",
+              "stack": "AssertionError: expected undefined to deeply equal true\n   at Object.eval sandbox-script.js:2:1)"
+            }
+          },
+          {
+            "assertion": "products created",
+            "skipped": false,
+            "error": {
+              "name": "AssertionError",
+              "index": 2,
+              "test": "products created",
+              "message": "expected undefined to be a number or a date",
+              "stack": "AssertionError: expected undefined to be a number or a date\n   at Object.eval sandbox-script.js:3:1)"
+            }
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "6a1dfbf5-84cd-4f51-9f5a-2d3bcf32b7e0",
+          "length": 3,
+          "cycles": 1,
+          "position": 1,
+          "iteration": 0,
+          "httpRequestId": "acd4193f-9d64-4732-9889-64be8569b64c"
+        },
+        "item": {
+          "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+          "name": "Store - Content",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "stores",
+                "{{storeId}}",
+                "content"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+                ],
+                "_lastExecutionId": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "4000",
+            "path": [
+              "api",
+              "stores",
+              "cmlsj1kl7001yx28khedrv3vu",
+              "content"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWxzZmg5dHgwMDAwZXdmYTl6bXd3aHBhIiwiZW1haWwiOiJhZG1pbkAxbWlzLmlvIiwicm9sZSI6InN1cGVyX2FkbWluIiwiaWF0IjoxNzcxNDQ5MDc3LCJleHAiOjE3NzE0NDk5Nzd9.pxyMVcQPdNUBrnmsucnPHmPYEUiwC1NC7yaYiq4AIlo"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "4376491d-a5e0-4546-87a4-e147efbd93de",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:4000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET"
+        },
+        "response": {
+          "id": "e926219b-64a9-45d0-b6e0-ab8d39c73403",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "*"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Resource-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Origin-Agent-Cluster",
+              "value": "?1"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "no-referrer"
+            },
+            {
+              "key": "Strict-Transport-Security",
+              "value": "max-age=31536000; includeSubDomains"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-DNS-Prefetch-Control",
+              "value": "off"
+            },
+            {
+              "key": "X-Download-Options",
+              "value": "noopen"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "SAMEORIGIN"
+            },
+            {
+              "key": "X-Permitted-Cross-Domain-Policies",
+              "value": "none"
+            },
+            {
+              "key": "X-XSS-Protection",
+              "value": "0"
+            },
+            {
+              "key": "X-RateLimit-Limit",
+              "value": "120"
+            },
+            {
+              "key": "X-RateLimit-Remaining",
+              "value": "118"
+            },
+            {
+              "key": "X-RateLimit-Reset",
+              "value": "8"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "2"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"2-vyGp6PvFo4RvsFtPoIWeCReyIC8\""
+            },
+            {
+              "key": "Date",
+              "value": "Wed, 18 Feb 2026 21:13:31 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              123,
+              125
+            ]
+          },
+          "cookie": [],
+          "responseTime": 10,
+          "responseSize": 2
+        },
+        "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+        "assertions": [
+          {
+            "assertion": "status 200",
+            "skipped": false
+          },
+          {
+            "assertion": "has hero or sections",
+            "skipped": false,
+            "error": {
+              "name": "AssertionError",
+              "index": 1,
+              "test": "has hero or sections",
+              "message": "expected undefined to exist",
+              "stack": "AssertionError: expected undefined to exist\n   at Object.eval sandbox-script.js:2:2)"
+            }
+          }
+        ]
+      },
+      {
+        "cursor": {
+          "ref": "027b07e6-afb1-4b23-b971-90d472784fbd",
+          "length": 3,
+          "cycles": 1,
+          "position": 2,
+          "iteration": 0,
+          "httpRequestId": "0f1d14cc-b2ed-400d-9146-fae37100544f"
+        },
+        "item": {
+          "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+          "name": "Store - Products",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "stores",
+                "{{storeId}}",
+                "products"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+                  "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+                ],
+                "_lastExecutionId": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+              }
+            }
+          ]
+        },
+        "request": {
+          "url": {
+            "protocol": "http",
+            "port": "4000",
+            "path": [
+              "api",
+              "stores",
+              "cmlsj1kl7001yx28khedrv3vu",
+              "products"
+            ],
+            "host": [
+              "localhost"
+            ],
+            "query": [],
+            "variable": []
+          },
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWxzZmg5dHgwMDAwZXdmYTl6bXd3aHBhIiwiZW1haWwiOiJhZG1pbkAxbWlzLmlvIiwicm9sZSI6InN1cGVyX2FkbWluIiwiaWF0IjoxNzcxNDQ5MDc3LCJleHAiOjE3NzE0NDk5Nzd9.pxyMVcQPdNUBrnmsucnPHmPYEUiwC1NC7yaYiq4AIlo"
+            },
+            {
+              "key": "User-Agent",
+              "value": "PostmanRuntime/7.39.1",
+              "system": true
+            },
+            {
+              "key": "Accept",
+              "value": "*/*",
+              "system": true
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache",
+              "system": true
+            },
+            {
+              "key": "Postman-Token",
+              "value": "3c438818-a65e-4182-9de3-5c4b1b423d2d",
+              "system": true
+            },
+            {
+              "key": "Host",
+              "value": "localhost:4000",
+              "system": true
+            },
+            {
+              "key": "Accept-Encoding",
+              "value": "gzip, deflate, br",
+              "system": true
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive",
+              "system": true
+            }
+          ],
+          "method": "GET"
+        },
+        "response": {
+          "id": "5e039154-6b01-487e-b1ea-2e57a9c04081",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Access-Control-Allow-Origin",
+              "value": "*"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests"
+            },
+            {
+              "key": "Cross-Origin-Opener-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Cross-Origin-Resource-Policy",
+              "value": "same-origin"
+            },
+            {
+              "key": "Origin-Agent-Cluster",
+              "value": "?1"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "no-referrer"
+            },
+            {
+              "key": "Strict-Transport-Security",
+              "value": "max-age=31536000; includeSubDomains"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "X-DNS-Prefetch-Control",
+              "value": "off"
+            },
+            {
+              "key": "X-Download-Options",
+              "value": "noopen"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "SAMEORIGIN"
+            },
+            {
+              "key": "X-Permitted-Cross-Domain-Policies",
+              "value": "none"
+            },
+            {
+              "key": "X-XSS-Protection",
+              "value": "0"
+            },
+            {
+              "key": "X-RateLimit-Limit",
+              "value": "120"
+            },
+            {
+              "key": "X-RateLimit-Remaining",
+              "value": "118"
+            },
+            {
+              "key": "X-RateLimit-Reset",
+              "value": "8"
+            },
+            {
+              "key": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "key": "Content-Length",
+              "value": "2"
+            },
+            {
+              "key": "ETag",
+              "value": "W/\"2-l9Fw4VUO7kr8CvBlt4zaMCqXZ0w\""
+            },
+            {
+              "key": "Date",
+              "value": "Wed, 18 Feb 2026 21:13:31 GMT"
+            },
+            {
+              "key": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "key": "Keep-Alive",
+              "value": "timeout=5"
+            }
+          ],
+          "stream": {
+            "type": "Buffer",
+            "data": [
+              91,
+              93
+            ]
+          },
+          "cookie": [],
+          "responseTime": 10,
+          "responseSize": 2
+        },
+        "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+        "assertions": [
+          {
+            "assertion": "status 200",
+            "skipped": false
+          },
+          {
+            "assertion": "has products array",
+            "skipped": false
+          },
+          {
+            "assertion": "generated products present",
+            "skipped": false,
+            "error": {
+              "name": "AssertionError",
+              "index": 2,
+              "test": "generated products present",
+              "message": "expected +0 to be above +0",
+              "stack": "AssertionError: expected +0 to be above +0\n   at Object.eval sandbox-script.js:3:3)"
+            }
+          }
+        ]
+      }
+    ],
+    "transfers": {
+      "responseTotal": 84
+    },
+    "failures": [
+      {
+        "error": {
+          "name": "AssertionError",
+          "index": 0,
+          "test": "status 201/200",
+          "message": "expected [ 200, 201 ] to include 400",
+          "stack": "AssertionError: expected [ 200, 201 ] to include 400\n   at Object.eval sandbox-script.js:1:1)",
+          "checksum": "0dd8e71285c5d592cc1420b76e821220",
+          "id": "36e87b68-d946-47ac-9a23-8048f72b4f00",
+          "timestamp": 1771449211091,
+          "stacktrace": [
+            {
+              "fileName": "sandbox-script.js",
+              "lineNumber": 1,
+              "functionName": "Object.eval",
+              "typeName": "Object",
+              "methodName": "eval",
+              "columnNumber": 1,
+              "native": false
+            }
+          ]
+        },
+        "at": "assertion:0 in test-script",
+        "source": {
+          "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+          "name": "AI - Apply Job",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "stores",
+                "{{storeId}}",
+                "ai",
+                "jobs",
+                "{{jobId}}",
+                "apply"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"replaceProducts\": true\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                  "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                ],
+                "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+              }
+            }
+          ]
+        },
+        "parent": {
+          "item": [
+            {
+              "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+              "name": "AI - Apply Job",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "ai",
+                    "jobs",
+                    "{{jobId}}",
+                    "apply"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "POST",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"replaceProducts\": true\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                      "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+              "name": "Store - Content",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "content"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+                    ],
+                    "_lastExecutionId": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+              "name": "Store - Products",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "products"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+                      "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+                  }
+                }
+              ]
+            }
+          ],
+          "event": [],
+          "variable": [],
+          "info": {
+            "_postman_id": "079a9d26-4dfa-4873-999d-a27e1aa95aa0",
+            "name": "AI Store Check",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+          }
+        },
+        "cursor": {
+          "position": 0,
+          "iteration": 0,
+          "length": 3,
+          "cycles": 1,
+          "empty": false,
+          "eof": false,
+          "bof": true,
+          "cr": false,
+          "ref": "25ac2472-c24d-46c7-83d0-bde0d37daac9",
+          "httpRequestId": "bde88e64-3ed9-4871-a387-03d8a7926e55",
+          "scriptId": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+          "execution": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+        }
+      },
+      {
+        "error": {
+          "name": "AssertionError",
+          "index": 1,
+          "test": "applied true",
+          "message": "expected undefined to deeply equal true",
+          "stack": "AssertionError: expected undefined to deeply equal true\n   at Object.eval sandbox-script.js:2:1)",
+          "checksum": "2d9e30de21b59dfa5357b140db1619c6",
+          "id": "329de144-0861-47b6-8da8-dccae181812d",
+          "timestamp": 1771449211098,
+          "stacktrace": [
+            {
+              "fileName": "sandbox-script.js",
+              "lineNumber": 2,
+              "functionName": "Object.eval",
+              "typeName": "Object",
+              "methodName": "eval",
+              "columnNumber": 1,
+              "native": false
+            }
+          ]
+        },
+        "at": "assertion:1 in test-script",
+        "source": {
+          "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+          "name": "AI - Apply Job",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "stores",
+                "{{storeId}}",
+                "ai",
+                "jobs",
+                "{{jobId}}",
+                "apply"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"replaceProducts\": true\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                  "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                ],
+                "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+              }
+            }
+          ]
+        },
+        "parent": {
+          "item": [
+            {
+              "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+              "name": "AI - Apply Job",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "ai",
+                    "jobs",
+                    "{{jobId}}",
+                    "apply"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "POST",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"replaceProducts\": true\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                      "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+              "name": "Store - Content",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "content"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+                    ],
+                    "_lastExecutionId": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+              "name": "Store - Products",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "products"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+                      "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+                  }
+                }
+              ]
+            }
+          ],
+          "event": [],
+          "variable": [],
+          "info": {
+            "_postman_id": "079a9d26-4dfa-4873-999d-a27e1aa95aa0",
+            "name": "AI Store Check",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+          }
+        },
+        "cursor": {
+          "position": 0,
+          "iteration": 0,
+          "length": 3,
+          "cycles": 1,
+          "empty": false,
+          "eof": false,
+          "bof": true,
+          "cr": false,
+          "ref": "25ac2472-c24d-46c7-83d0-bde0d37daac9",
+          "httpRequestId": "bde88e64-3ed9-4871-a387-03d8a7926e55",
+          "scriptId": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+          "execution": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+        }
+      },
+      {
+        "error": {
+          "name": "AssertionError",
+          "index": 2,
+          "test": "products created",
+          "message": "expected undefined to be a number or a date",
+          "stack": "AssertionError: expected undefined to be a number or a date\n   at Object.eval sandbox-script.js:3:1)",
+          "checksum": "d5ebd8a12f9139ece85b0c19b516c72d",
+          "id": "dea62495-456e-4892-aae0-06e234dbe3f1",
+          "timestamp": 1771449211101,
+          "stacktrace": [
+            {
+              "fileName": "sandbox-script.js",
+              "lineNumber": 3,
+              "functionName": "Object.eval",
+              "typeName": "Object",
+              "methodName": "eval",
+              "columnNumber": 1,
+              "native": false
+            }
+          ]
+        },
+        "at": "assertion:2 in test-script",
+        "source": {
+          "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+          "name": "AI - Apply Job",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "stores",
+                "{{storeId}}",
+                "ai",
+                "jobs",
+                "{{jobId}}",
+                "apply"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"replaceProducts\": true\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                  "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                ],
+                "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+              }
+            }
+          ]
+        },
+        "parent": {
+          "item": [
+            {
+              "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+              "name": "AI - Apply Job",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "ai",
+                    "jobs",
+                    "{{jobId}}",
+                    "apply"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "POST",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"replaceProducts\": true\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                      "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+              "name": "Store - Content",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "content"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+                    ],
+                    "_lastExecutionId": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+              "name": "Store - Products",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "products"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+                      "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+                  }
+                }
+              ]
+            }
+          ],
+          "event": [],
+          "variable": [],
+          "info": {
+            "_postman_id": "079a9d26-4dfa-4873-999d-a27e1aa95aa0",
+            "name": "AI Store Check",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+          }
+        },
+        "cursor": {
+          "position": 0,
+          "iteration": 0,
+          "length": 3,
+          "cycles": 1,
+          "empty": false,
+          "eof": false,
+          "bof": true,
+          "cr": false,
+          "ref": "25ac2472-c24d-46c7-83d0-bde0d37daac9",
+          "httpRequestId": "bde88e64-3ed9-4871-a387-03d8a7926e55",
+          "scriptId": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+          "execution": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+        }
+      },
+      {
+        "error": {
+          "name": "AssertionError",
+          "index": 1,
+          "test": "has hero or sections",
+          "message": "expected undefined to exist",
+          "stack": "AssertionError: expected undefined to exist\n   at Object.eval sandbox-script.js:2:2)",
+          "checksum": "b008341c5b1bdd2d4e9d71cbc9019002",
+          "id": "d652e2ee-c9db-4855-a7a3-d7ef0364e6db",
+          "timestamp": 1771449211154,
+          "stacktrace": [
+            {
+              "fileName": "sandbox-script.js",
+              "lineNumber": 2,
+              "functionName": "Object.eval",
+              "typeName": "Object",
+              "methodName": "eval",
+              "columnNumber": 2,
+              "native": false
+            }
+          ]
+        },
+        "at": "assertion:1 in test-script",
+        "source": {
+          "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+          "name": "Store - Content",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "stores",
+                "{{storeId}}",
+                "content"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+                ],
+                "_lastExecutionId": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+              }
+            }
+          ]
+        },
+        "parent": {
+          "item": [
+            {
+              "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+              "name": "AI - Apply Job",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "ai",
+                    "jobs",
+                    "{{jobId}}",
+                    "apply"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "POST",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"replaceProducts\": true\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                      "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+              "name": "Store - Content",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "content"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+                    ],
+                    "_lastExecutionId": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+              "name": "Store - Products",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "products"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+                      "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+                  }
+                }
+              ]
+            }
+          ],
+          "event": [],
+          "variable": [],
+          "info": {
+            "_postman_id": "079a9d26-4dfa-4873-999d-a27e1aa95aa0",
+            "name": "AI Store Check",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+          }
+        },
+        "cursor": {
+          "ref": "6a1dfbf5-84cd-4f51-9f5a-2d3bcf32b7e0",
+          "length": 3,
+          "cycles": 1,
+          "position": 1,
+          "iteration": 0,
+          "httpRequestId": "acd4193f-9d64-4732-9889-64be8569b64c",
+          "scriptId": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+          "execution": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+        }
+      },
+      {
+        "error": {
+          "name": "AssertionError",
+          "index": 2,
+          "test": "generated products present",
+          "message": "expected +0 to be above +0",
+          "stack": "AssertionError: expected +0 to be above +0\n   at Object.eval sandbox-script.js:3:3)",
+          "checksum": "ac30e9e9bd6ca1f45f8ca85dae543145",
+          "id": "18cb9da6-dd5d-4d4e-80cc-f4e4b171f0e6",
+          "timestamp": 1771449211210,
+          "stacktrace": [
+            {
+              "fileName": "sandbox-script.js",
+              "lineNumber": 3,
+              "functionName": "Object.eval",
+              "typeName": "Object",
+              "methodName": "eval",
+              "columnNumber": 3,
+              "native": false
+            }
+          ]
+        },
+        "at": "assertion:2 in test-script",
+        "source": {
+          "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+          "name": "Store - Products",
+          "request": {
+            "url": {
+              "path": [
+                "api",
+                "stores",
+                "{{storeId}}",
+                "products"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "method": "GET"
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+                  "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+                ],
+                "_lastExecutionId": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+              }
+            }
+          ]
+        },
+        "parent": {
+          "item": [
+            {
+              "id": "e7a4b719-1713-4d29-8702-df8fc7dc73b4",
+              "name": "AI - Apply Job",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "ai",
+                    "jobs",
+                    "{{jobId}}",
+                    "apply"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "POST",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"replaceProducts\": true\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "acf3ab54-2309-4ea0-aeb0-8aa583dece83",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 201/200', function () { pm.expect([200,201]).to.include(pm.response.code); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('applied true', function(){ pm.expect(jsonData.applied).to.eql(true); });",
+                      "pm.test('products created', function(){ pm.expect(jsonData.createdProductsCount).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "9ee33731-bf77-4453-82dd-ee06e46c41e8"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "cd8393e1-88d2-42e5-a8ec-950c1097ec1f",
+              "name": "Store - Content",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "content"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "bd81632d-0ecc-4ac8-9b50-ba46269120a2",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has hero or sections', function(){ pm.expect(jsonData.hero || jsonData.sections).to.exist; });"
+                    ],
+                    "_lastExecutionId": "7d46b279-39d5-4260-9b3b-c77da9659b03"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "5f4c3b6d-1d23-4c15-87fd-3939c25990bb",
+              "name": "Store - Products",
+              "request": {
+                "url": {
+                  "path": [
+                    "api",
+                    "stores",
+                    "{{storeId}}",
+                    "products"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}"
+                  }
+                ],
+                "method": "GET"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "id": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('status 200', function () { pm.response.to.have.status(200); });",
+                      "var jsonData = pm.response.json();",
+                      "pm.test('has products array', function(){ pm.expect(Array.isArray(jsonData)).to.eql(true); });",
+                      "pm.test('generated products present', function(){ pm.expect(jsonData.length).to.be.above(0); });"
+                    ],
+                    "_lastExecutionId": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+                  }
+                }
+              ]
+            }
+          ],
+          "event": [],
+          "variable": [],
+          "info": {
+            "_postman_id": "079a9d26-4dfa-4873-999d-a27e1aa95aa0",
+            "name": "AI Store Check",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+          }
+        },
+        "cursor": {
+          "ref": "027b07e6-afb1-4b23-b971-90d472784fbd",
+          "length": 3,
+          "cycles": 1,
+          "position": 2,
+          "iteration": 0,
+          "httpRequestId": "0f1d14cc-b2ed-400d-9146-fae37100544f",
+          "scriptId": "218f26c0-45ed-4d7d-b0b0-c9a9665c5185",
+          "execution": "a80018c7-2c0c-4773-ad08-fae113719fc3"
+        }
+      }
+    ],
+    "error": null
+  }
+}

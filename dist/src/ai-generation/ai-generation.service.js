@@ -14,6 +14,7 @@ exports.AiGenerationService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const client_1 = require("@prisma/client");
+const crypto_1 = require("crypto");
 const zod_1 = require("zod");
 const audit_service_1 = require("../common/audit.service");
 const prisma_service_1 = require("../prisma/prisma.service");
@@ -171,6 +172,73 @@ let AiGenerationService = AiGenerationService_1 = class AiGenerationService {
             ...result,
         };
     }
+    async listPrompts(storeId) {
+        const rows = await this.prisma.platformSetting.findMany({
+            where: { key: { startsWith: `ai_prompt:${storeId}:` } },
+            orderBy: { updatedAt: 'desc' },
+            take: 200,
+        });
+        return rows.map((row) => {
+            const payload = row.valueJson;
+            return {
+                id: row.key.replace(`ai_prompt:${storeId}:`, ''),
+                ...(payload ?? {}),
+            };
+        });
+    }
+    async savePrompt(storeId, data, actor) {
+        const promptId = (0, crypto_1.randomUUID)();
+        const payload = {
+            title: data.title ?? `Prompt ${new Date().toISOString()}`,
+            prompt: data.prompt,
+            createdBy: actor.id,
+            createdAt: new Date().toISOString(),
+        };
+        const saved = await this.prisma.platformSetting.create({
+            data: {
+                key: `ai_prompt:${storeId}:${promptId}`,
+                valueJson: payload,
+            },
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'ai.prompt.save',
+            entityType: 'PlatformSetting',
+            entityId: saved.key,
+            metaJson: { storeId, promptId },
+        });
+        return { id: promptId, ...payload };
+    }
+    async replayPrompt(storeId, promptId, actor) {
+        const row = await this.prisma.platformSetting.findUnique({
+            where: { key: `ai_prompt:${storeId}:${promptId}` },
+        });
+        if (!row)
+            throw new common_1.NotFoundException('Prompt not found');
+        const payload = row.valueJson;
+        if (!payload?.prompt)
+            throw new common_1.BadRequestException('Prompt payload invalid');
+        const job = await this.createJob({
+            storeId,
+            requestedBy: actor.id,
+            prompt: payload.prompt,
+            inputImagesJson: [],
+        });
+        await this.auditService.log({
+            actorUserId: actor.id,
+            role: actor.role,
+            action: 'ai.prompt.replay',
+            entityType: 'AiGenerationJob',
+            entityId: job.id,
+            metaJson: { storeId, promptId },
+        });
+        return {
+            jobId: job.id,
+            promptId,
+            title: payload.title ?? null,
+        };
+    }
     async processJob(jobId) {
         await this.prisma.aiGenerationJob.update({
             where: { id: jobId },
@@ -214,7 +282,6 @@ let AiGenerationService = AiGenerationService_1 = class AiGenerationService {
             return this.fallbackResult(input.prompt);
         }
         const model = this.configService.get('GEMINI_MODEL', 'gemini-1.5-flash');
-        const projectNumber = this.configService.get('GEMINI_PROJECT_NUMBER');
         const projectName = this.configService.get('GEMINI_PROJECT_NAME');
         const projectId = this.configService.get('GEMINI_PROJECT_ID');
         const instruction = `You are a strict JSON generator for ecommerce store setup. Return only JSON matching this shape:\n{
@@ -225,32 +292,37 @@ let AiGenerationService = AiGenerationService_1 = class AiGenerationService {
         const headers = {
             'Content-Type': 'application/json',
         };
-        if (projectNumber) {
-            headers['x-goog-user-project'] = projectNumber;
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: instruction }] }],
+                    generationConfig: {
+                        temperature: 0.3,
+                        maxOutputTokens: 1024,
+                    },
+                }),
+            });
+            if (!response.ok) {
+                const body = await response.text();
+                this.logger.warn(`Gemini unavailable (${response.status}), using fallback result. ${body.slice(0, 300)}`);
+                return this.fallbackResult(input.prompt);
+            }
+            const data = (await response.json());
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!rawText) {
+                this.logger.warn('Gemini returned empty response, using fallback result');
+                return this.fallbackResult(input.prompt);
+            }
+            const cleaned = this.stripCodeFence(rawText);
+            const parsed = JSON.parse(cleaned);
+            return aiResultSchema.parse(parsed);
         }
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: instruction }] }],
-                generationConfig: {
-                    temperature: 0.3,
-                    maxOutputTokens: 1024,
-                },
-            }),
-        });
-        if (!response.ok) {
-            const body = await response.text();
-            throw new Error(`Gemini API failed: ${response.status} ${body}`);
+        catch (error) {
+            this.logger.warn(`Gemini request error, using fallback result: ${error.message}`);
+            return this.fallbackResult(input.prompt);
         }
-        const data = (await response.json());
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!rawText) {
-            throw new Error('Gemini returned empty response');
-        }
-        const cleaned = this.stripCodeFence(rawText);
-        const parsed = JSON.parse(cleaned);
-        return aiResultSchema.parse(parsed);
     }
     fallbackResult(prompt) {
         return aiResultSchema.parse({
