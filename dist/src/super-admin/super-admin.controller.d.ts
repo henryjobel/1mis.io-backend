@@ -46,24 +46,24 @@ export declare class SuperAdminController {
         aiJobs: number;
     }>;
     stores(): import(".prisma/client").Prisma.PrismaPromise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }[]>;
     updateStoreStatus(id: string, dto: UpdateStoreStatusDto, user: RequestUser): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
@@ -73,13 +73,13 @@ export declare class SuperAdminController {
     }>;
     lifecycleByStore(storeId: string): Promise<{
         store: {
-            name: string;
             id: string;
-            status: import(".prisma/client").$Enums.StoreStatus;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
             ownerId: string;
             slug: string;
+            status: import(".prisma/client").$Enums.StoreStatus;
             themePreset: string | null;
             publishedAt: Date | null;
         } | null;
@@ -91,16 +91,16 @@ export declare class SuperAdminController {
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     admins(): import(".prisma/client").Prisma.PrismaPromise<{
-        name: string;
         id: string;
         email: string;
-        isActive: boolean;
+        name: string;
         role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
     }[]>;
     inviteAdmin(dto: InviteAdminDto, user: RequestUser): Promise<{
-        name: string;
         id: string;
         email: string;
+        name: string;
         role: import(".prisma/client").$Enums.Role;
     }>;
     subscriptions(): {
@@ -164,13 +164,13 @@ export declare class SuperAdminController {
     }>;
     auditLogs(): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
-        createdAt: Date;
         role: import(".prisma/client").$Enums.Role | null;
-        actorUserId: string | null;
+        createdAt: Date;
         action: string;
         entityType: string;
         entityId: string;
         metaJson: import("@prisma/client/runtime/library").JsonValue | null;
+        actorUserId: string | null;
     }[]>;
     settings(): import(".prisma/client").Prisma.PrismaPromise<{
         updatedAt: Date;

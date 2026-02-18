@@ -6,11 +6,11 @@ export declare class MediaService {
     private readonly auditService;
     constructor(prisma: PrismaService, auditService: AuditService);
     list(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
-        type: string;
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        storeId: string;
         url: string;
         altText: string | null;
     }[]>;
@@ -22,11 +22,11 @@ export declare class MediaService {
         id: string;
         role: Role;
     }): Promise<{
-        type: string;
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        storeId: string;
         url: string;
         altText: string | null;
     }>;
@@ -34,11 +34,11 @@ export declare class MediaService {
         id: string;
         role: Role;
     }): Promise<{
-        type: string;
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        storeId: string;
         url: string;
         altText: string | null;
     }>;

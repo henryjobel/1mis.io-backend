@@ -12,47 +12,47 @@ export declare class ReviewsService {
         };
     } & {
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
-        title: string | null;
-        isApproved: boolean;
+        storeId: string;
         userId: string | null;
+        title: string | null;
+        productId: string;
         customer: string | null;
         rating: number;
         comment: string | null;
+        isApproved: boolean;
     })[]>;
     approve(storeId: string, reviewId: string, isApproved: boolean, actor: {
         id: string;
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
-        title: string | null;
-        isApproved: boolean;
+        storeId: string;
         userId: string | null;
+        title: string | null;
+        productId: string;
         customer: string | null;
         rating: number;
         comment: string | null;
+        isApproved: boolean;
     }>;
     remove(storeId: string, reviewId: string, actor: {
         id: string;
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
-        title: string | null;
-        isApproved: boolean;
+        storeId: string;
         userId: string | null;
+        title: string | null;
+        productId: string;
         customer: string | null;
         rating: number;
         comment: string | null;
+        isApproved: boolean;
     }>;
 }

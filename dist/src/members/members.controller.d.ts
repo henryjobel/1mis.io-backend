@@ -13,33 +13,33 @@ export declare class MembersController {
     constructor(membersService: MembersService);
     list(storeId: string): import(".prisma/client").Prisma.PrismaPromise<({
         user: {
-            name: string;
             id: string;
             email: string;
-            isActive: boolean;
+            name: string;
             role: import(".prisma/client").$Enums.Role;
+            isActive: boolean;
         };
     } & {
-        storeId: string;
         createdAt: Date;
+        storeId: string;
         userId: string;
         roleInStore: string;
     })[]>;
     invite(storeId: string, dto: InviteMemberDto, user: RequestUser): Promise<{
-        storeId: string;
         createdAt: Date;
+        storeId: string;
         userId: string;
         roleInStore: string;
     }>;
     updateRole(storeId: string, userId: string, dto: UpdateMemberDto, user: RequestUser): Promise<{
-        storeId: string;
         createdAt: Date;
+        storeId: string;
         userId: string;
         roleInStore: string;
     }>;
     remove(storeId: string, userId: string, user: RequestUser): Promise<{
-        storeId: string;
         createdAt: Date;
+        storeId: string;
         userId: string;
         roleInStore: string;
     }>;

@@ -13,42 +13,42 @@ export declare class ReviewsController {
         };
     } & {
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
-        title: string | null;
-        isApproved: boolean;
+        storeId: string;
         userId: string | null;
+        title: string | null;
+        productId: string;
         customer: string | null;
         rating: number;
         comment: string | null;
+        isApproved: boolean;
     })[]>;
     approve(storeId: string, reviewId: string, dto: UpdateReviewApprovalDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
-        title: string | null;
-        isApproved: boolean;
+        storeId: string;
         userId: string | null;
+        title: string | null;
+        productId: string;
         customer: string | null;
         rating: number;
         comment: string | null;
+        isApproved: boolean;
     }>;
     remove(storeId: string, reviewId: string, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
-        title: string | null;
-        isApproved: boolean;
+        storeId: string;
         userId: string | null;
+        title: string | null;
+        productId: string;
         customer: string | null;
         rating: number;
         comment: string | null;
+        isApproved: boolean;
     }>;
 }
 export {};

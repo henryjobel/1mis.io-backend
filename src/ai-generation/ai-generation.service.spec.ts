@@ -72,9 +72,15 @@ describe('AiGenerationService', () => {
     expect(processor).toBeDefined();
     await processor?.('job1');
 
-    const statuses = (prisma.aiGenerationJob.update.mock.calls as Array<[{
-      data?: { status?: AiJobStatus };
-    }]>)
+    const statuses = (
+      prisma.aiGenerationJob.update.mock.calls as Array<
+        [
+          {
+            data?: { status?: AiJobStatus };
+          },
+        ]
+      >
+    )
       .map(([arg]) => arg.data?.status)
       .filter((status): status is AiJobStatus => Boolean(status));
 

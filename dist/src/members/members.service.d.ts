@@ -7,15 +7,15 @@ export declare class MembersService {
     constructor(prisma: PrismaService, auditService: AuditService);
     list(storeId: string): import(".prisma/client").Prisma.PrismaPromise<({
         user: {
-            name: string;
             id: string;
             email: string;
-            isActive: boolean;
+            name: string;
             role: import(".prisma/client").$Enums.Role;
+            isActive: boolean;
         };
     } & {
-        storeId: string;
         createdAt: Date;
+        storeId: string;
         userId: string;
         roleInStore: string;
     })[]>;
@@ -27,8 +27,8 @@ export declare class MembersService {
         id: string;
         role: Role;
     }): Promise<{
-        storeId: string;
         createdAt: Date;
+        storeId: string;
         userId: string;
         roleInStore: string;
     }>;
@@ -38,8 +38,8 @@ export declare class MembersService {
         id: string;
         role: Role;
     }): Promise<{
-        storeId: string;
         createdAt: Date;
+        storeId: string;
         userId: string;
         roleInStore: string;
     }>;
@@ -47,8 +47,8 @@ export declare class MembersService {
         id: string;
         role: Role;
     }): Promise<{
-        storeId: string;
         createdAt: Date;
+        storeId: string;
         userId: string;
         roleInStore: string;
     }>;

@@ -12,19 +12,19 @@ export declare class CategoriesService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         slug: string;
     }>;
     list(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         slug: string;
     }[]>;
     update(storeId: string, categoryId: string, data: {
@@ -34,22 +34,22 @@ export declare class CategoriesService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         slug: string;
     }>;
     remove(storeId: string, categoryId: string, actor: {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         slug: string;
     }>;
 }

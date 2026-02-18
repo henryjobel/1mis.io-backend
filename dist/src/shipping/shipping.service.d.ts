@@ -31,10 +31,10 @@ export declare class ShippingService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string;
         courier: string;
         trackingNumber: string;
@@ -48,10 +48,10 @@ export declare class ShippingService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string;
         courier: string;
         trackingNumber: string;
@@ -63,12 +63,12 @@ export declare class ShippingService {
     shipments(storeId: string): Prisma.PrismaPromise<({
         order: {
             id: string;
-            storeId: string;
-            status: import(".prisma/client").$Enums.OrderStatus;
             createdAt: Date;
             updatedAt: Date;
-            total: Prisma.Decimal;
+            storeId: string;
+            status: import(".prisma/client").$Enums.OrderStatus;
             code: string;
+            total: Prisma.Decimal;
             customerName: string;
             customerEmail: string;
             customerPhone: string | null;
@@ -81,10 +81,10 @@ export declare class ShippingService {
         };
     } & {
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string;
         courier: string;
         trackingNumber: string;

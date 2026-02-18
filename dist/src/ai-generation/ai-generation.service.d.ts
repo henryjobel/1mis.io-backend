@@ -19,26 +19,26 @@ export declare class AiGenerationService implements OnModuleInit {
         inputImagesJson?: unknown;
     }): Promise<{
         id: string;
-        prompt: string;
-        inputImagesJson: Prisma.JsonValue | null;
-        status: import(".prisma/client").$Enums.AiJobStatus;
-        resultJson: Prisma.JsonValue | null;
-        errorMessage: string | null;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
+        status: import(".prisma/client").$Enums.AiJobStatus;
+        prompt: string;
+        inputImagesJson: Prisma.JsonValue | null;
+        resultJson: Prisma.JsonValue | null;
+        errorMessage: string | null;
         requestedBy: string;
     }>;
     getJob(storeId: string, jobId: string): Promise<{
         id: string;
-        prompt: string;
-        inputImagesJson: Prisma.JsonValue | null;
-        status: import(".prisma/client").$Enums.AiJobStatus;
-        resultJson: Prisma.JsonValue | null;
-        errorMessage: string | null;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
+        status: import(".prisma/client").$Enums.AiJobStatus;
+        prompt: string;
+        inputImagesJson: Prisma.JsonValue | null;
+        resultJson: Prisma.JsonValue | null;
+        errorMessage: string | null;
         requestedBy: string;
     }>;
     getJobResult(storeId: string, jobId: string): Promise<{

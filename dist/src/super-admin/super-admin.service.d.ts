@@ -12,13 +12,13 @@ export declare class SuperAdminService {
         aiJobs: number;
     }>;
     stores(): Prisma.PrismaPromise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }[]>;
@@ -26,13 +26,13 @@ export declare class SuperAdminService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
@@ -42,13 +42,13 @@ export declare class SuperAdminService {
     }>;
     lifecycleByStore(storeId: string): Promise<{
         store: {
-            name: string;
             id: string;
-            status: import(".prisma/client").$Enums.StoreStatus;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
             ownerId: string;
             slug: string;
+            status: import(".prisma/client").$Enums.StoreStatus;
             themePreset: string | null;
             publishedAt: Date | null;
         } | null;
@@ -68,11 +68,11 @@ export declare class SuperAdminService {
         valueJson: Prisma.JsonValue;
     }>;
     admins(): Prisma.PrismaPromise<{
-        name: string;
         id: string;
         email: string;
-        isActive: boolean;
+        name: string;
         role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
     }[]>;
     inviteAdmin(data: {
         name: string;
@@ -82,9 +82,9 @@ export declare class SuperAdminService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
         email: string;
+        name: string;
         role: import(".prisma/client").$Enums.Role;
     }>;
     subscriptions(): {
@@ -166,13 +166,13 @@ export declare class SuperAdminService {
     }>;
     auditLogs(): Prisma.PrismaPromise<{
         id: string;
-        createdAt: Date;
         role: import(".prisma/client").$Enums.Role | null;
-        actorUserId: string | null;
+        createdAt: Date;
         action: string;
         entityType: string;
         entityId: string;
         metaJson: Prisma.JsonValue | null;
+        actorUserId: string | null;
     }[]>;
     settings(): Prisma.PrismaPromise<{
         updatedAt: Date;

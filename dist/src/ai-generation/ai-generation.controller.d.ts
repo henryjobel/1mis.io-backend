@@ -12,26 +12,26 @@ export declare class AiGenerationController {
     constructor(aiGenerationService: AiGenerationService);
     generate(storeId: string, user: RequestUser, dto: GenerateAiDto): Promise<{
         id: string;
-        prompt: string;
-        inputImagesJson: import("@prisma/client/runtime/library").JsonValue | null;
-        status: import(".prisma/client").$Enums.AiJobStatus;
-        resultJson: import("@prisma/client/runtime/library").JsonValue | null;
-        errorMessage: string | null;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
+        status: import(".prisma/client").$Enums.AiJobStatus;
+        prompt: string;
+        inputImagesJson: import("@prisma/client/runtime/library").JsonValue | null;
+        resultJson: import("@prisma/client/runtime/library").JsonValue | null;
+        errorMessage: string | null;
         requestedBy: string;
     }>;
     getJob(storeId: string, jobId: string): Promise<{
         id: string;
-        prompt: string;
-        inputImagesJson: import("@prisma/client/runtime/library").JsonValue | null;
-        status: import(".prisma/client").$Enums.AiJobStatus;
-        resultJson: import("@prisma/client/runtime/library").JsonValue | null;
-        errorMessage: string | null;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
+        status: import(".prisma/client").$Enums.AiJobStatus;
+        prompt: string;
+        inputImagesJson: import("@prisma/client/runtime/library").JsonValue | null;
+        resultJson: import("@prisma/client/runtime/library").JsonValue | null;
+        errorMessage: string | null;
         requestedBy: string;
     }>;
     getJobResult(storeId: string, jobId: string): Promise<{

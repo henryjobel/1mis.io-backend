@@ -29,10 +29,10 @@ export declare class ShippingController {
     }>;
     shipOrder(storeId: string, dto: ShipOrderDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string;
         courier: string;
         trackingNumber: string;
@@ -43,10 +43,10 @@ export declare class ShippingController {
     }>;
     updateTracking(storeId: string, shipmentId: string, dto: TrackingStatusDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string;
         courier: string;
         trackingNumber: string;
@@ -58,12 +58,12 @@ export declare class ShippingController {
     shipments(storeId: string): import(".prisma/client").Prisma.PrismaPromise<({
         order: {
             id: string;
-            storeId: string;
-            status: import(".prisma/client").$Enums.OrderStatus;
             createdAt: Date;
             updatedAt: Date;
-            total: import("@prisma/client/runtime/library").Decimal;
+            storeId: string;
+            status: import(".prisma/client").$Enums.OrderStatus;
             code: string;
+            total: import("@prisma/client/runtime/library").Decimal;
             customerName: string;
             customerEmail: string;
             customerPhone: string | null;
@@ -76,10 +76,10 @@ export declare class ShippingController {
         };
     } & {
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string;
         courier: string;
         trackingNumber: string;

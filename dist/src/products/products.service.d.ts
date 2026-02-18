@@ -18,57 +18,57 @@ export declare class ProductsService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
+        storeId: string;
+        status: string;
         title: string;
+        description: string | null;
         sku: string | null;
         imageUrl: string | null;
-        categoryId: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         stock: number;
+        categoryId: string | null;
     }>;
     list(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
+        storeId: string;
+        status: string;
         title: string;
+        description: string | null;
         sku: string | null;
         imageUrl: string | null;
-        categoryId: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         stock: number;
+        categoryId: string | null;
     }[]>;
     findOne(storeId: string, productId: string): Promise<{
         variants: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            productId: string;
             sku: string | null;
             price: import("@prisma/client/runtime/library").Decimal | null;
             stock: number;
             optionName: string;
             optionValue: string;
+            productId: string;
         }[];
     } & {
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
+        storeId: string;
+        status: string;
         title: string;
+        description: string | null;
         sku: string | null;
         imageUrl: string | null;
-        categoryId: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         stock: number;
+        categoryId: string | null;
     }>;
     update(storeId: string, productId: string, data: {
         title?: string;
@@ -84,34 +84,34 @@ export declare class ProductsService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
+        storeId: string;
+        status: string;
         title: string;
+        description: string | null;
         sku: string | null;
         imageUrl: string | null;
-        categoryId: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         stock: number;
+        categoryId: string | null;
     }>;
     delete(storeId: string, productId: string, actor: {
         id: string;
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
+        storeId: string;
+        status: string;
         title: string;
+        description: string | null;
         sku: string | null;
         imageUrl: string | null;
-        categoryId: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         stock: number;
+        categoryId: string | null;
     }>;
     createVariant(storeId: string, productId: string, data: {
         optionName: string;
@@ -126,23 +126,23 @@ export declare class ProductsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
         sku: string | null;
         price: import("@prisma/client/runtime/library").Decimal | null;
         stock: number;
         optionName: string;
         optionValue: string;
+        productId: string;
     }>;
     listVariants(storeId: string, productId: string): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
         sku: string | null;
         price: import("@prisma/client/runtime/library").Decimal | null;
         stock: number;
         optionName: string;
         optionValue: string;
+        productId: string;
     }[]>;
     updateVariant(storeId: string, productId: string, variantId: string, data: {
         optionName?: string;
@@ -157,12 +157,12 @@ export declare class ProductsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
         sku: string | null;
         price: import("@prisma/client/runtime/library").Decimal | null;
         stock: number;
         optionName: string;
         optionValue: string;
+        productId: string;
     }>;
     deleteVariant(storeId: string, productId: string, variantId: string, actor: {
         id: string;
@@ -171,12 +171,12 @@ export declare class ProductsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
         sku: string | null;
         price: import("@prisma/client/runtime/library").Decimal | null;
         stock: number;
         optionName: string;
         optionValue: string;
+        productId: string;
     }>;
     private assertProductInStore;
 }

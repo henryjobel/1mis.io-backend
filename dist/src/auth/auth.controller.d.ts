@@ -50,11 +50,11 @@ export declare class AuthController {
         success: boolean;
     }>;
     me(user: RequestUser): Promise<{
-        name: string;
         id: string;
-        createdAt: Date;
         email: string;
-        isActive: boolean;
+        name: string;
         role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
+        createdAt: Date;
     } | null>;
 }

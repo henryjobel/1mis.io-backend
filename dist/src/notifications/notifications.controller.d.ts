@@ -11,25 +11,25 @@ export declare class NotificationsController {
     constructor(notificationsService: NotificationsService);
     send(storeId: string, dto: SendNotificationDto, user: RequestUser): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         storeId: string;
+        status: string;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
         channel: string;
         recipient: string;
         templateKey: string | null;
-        payload: import("@prisma/client/runtime/library").JsonValue | null;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     logs(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         storeId: string;
+        status: string;
+        payload: import("@prisma/client/runtime/library").JsonValue | null;
         channel: string;
         recipient: string;
         templateKey: string | null;
-        payload: import("@prisma/client/runtime/library").JsonValue | null;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
     }[]>;
 }
 export {};

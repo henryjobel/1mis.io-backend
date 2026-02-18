@@ -56,12 +56,12 @@ export declare class AuthService {
         success: boolean;
     }>;
     me(userId: string): Promise<{
-        name: string;
         id: string;
-        createdAt: Date;
         email: string;
-        isActive: boolean;
+        name: string;
         role: import(".prisma/client").$Enums.Role;
+        isActive: boolean;
+        createdAt: Date;
     } | null>;
     private issueTokens;
     private parseExpiryMs;

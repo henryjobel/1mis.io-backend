@@ -15,24 +15,24 @@ export declare class NotificationsService {
         role: Role;
     }): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         storeId: string;
+        status: string;
+        payload: Prisma.JsonValue | null;
         channel: string;
         recipient: string;
         templateKey: string | null;
-        payload: Prisma.JsonValue | null;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     logs(storeId: string): Prisma.PrismaPromise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         storeId: string;
+        status: string;
+        payload: Prisma.JsonValue | null;
         channel: string;
         recipient: string;
         templateKey: string | null;
-        payload: Prisma.JsonValue | null;
-        status: string;
-        createdAt: Date;
-        updatedAt: Date;
     }[]>;
 }

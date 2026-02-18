@@ -9,20 +9,20 @@ export declare class OrdersService {
         items: {
             id: string;
             createdAt: Date;
-            orderId: string;
             productId: string | null;
+            orderId: string;
             productNameSnapshot: string;
             qty: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
         }[];
     } & {
         id: string;
-        storeId: string;
-        status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
         updatedAt: Date;
-        total: import("@prisma/client/runtime/library").Decimal;
+        storeId: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
         code: string;
+        total: import("@prisma/client/runtime/library").Decimal;
         customerName: string;
         customerEmail: string;
         customerPhone: string | null;
@@ -40,20 +40,20 @@ export declare class OrdersService {
         items: {
             id: string;
             createdAt: Date;
-            orderId: string;
             productId: string | null;
+            orderId: string;
             productNameSnapshot: string;
             qty: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
         }[];
     } & {
         id: string;
-        storeId: string;
-        status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
         updatedAt: Date;
-        total: import("@prisma/client/runtime/library").Decimal;
+        storeId: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
         code: string;
+        total: import("@prisma/client/runtime/library").Decimal;
         customerName: string;
         customerEmail: string;
         customerPhone: string | null;

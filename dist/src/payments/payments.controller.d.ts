@@ -31,10 +31,10 @@ export declare class PaymentsController {
     }>;
     intent(storeId: string, dto: PaymentIntentDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
@@ -44,10 +44,10 @@ export declare class PaymentsController {
     }>;
     confirm(storeId: string, dto: ConfirmPaymentDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
@@ -57,10 +57,10 @@ export declare class PaymentsController {
     }>;
     refund(storeId: string, dto: RefundPaymentDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
@@ -70,10 +70,10 @@ export declare class PaymentsController {
     }>;
     transactions(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;

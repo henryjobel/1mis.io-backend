@@ -15,9 +15,9 @@ export declare class ThemesController {
     storeTheme(storeId: string): Promise<{
         theme: {
             id: string;
-            storeId: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
             preset: string | null;
             customJson: import("@prisma/client/runtime/library").JsonValue | null;
         } | null;
@@ -29,9 +29,9 @@ export declare class ThemesController {
     }>;
     apply(storeId: string, dto: ApplyThemeDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         preset: string | null;
         customJson: import("@prisma/client/runtime/library").JsonValue | null;
     }>;

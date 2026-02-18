@@ -25,33 +25,33 @@ export declare class StoresController {
     private readonly storesService;
     constructor(storesService: StoresService);
     create(user: RequestUser, dto: CreateStoreDto): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
     list(user: RequestUser): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }[]>;
     findOne(id: string): import(".prisma/client").Prisma.Prisma__StoreClient<({
         trackingConfig: {
             id: string;
-            storeId: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
             pixelId: string | null;
             gtmId: string | null;
             capiToken: string | null;
@@ -59,50 +59,50 @@ export declare class StoresController {
         } | null;
         themeConfig: {
             id: string;
-            storeId: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
             preset: string | null;
             customJson: import("@prisma/client/runtime/library").JsonValue | null;
         } | null;
     } & {
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }) | null, null, import("@prisma/client/runtime/library").DefaultArgs>;
     update(id: string, dto: UpdateStoreDto, user: RequestUser): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
     publish(id: string, user: RequestUser): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
     updateTracking(id: string, dto: UpdateTrackingDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         pixelId: string | null;
         gtmId: string | null;
         capiToken: string | null;
@@ -110,9 +110,9 @@ export declare class StoresController {
     }>;
     updateTheme(id: string, dto: UpdateThemeDto, user: RequestUser): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         preset: string | null;
         customJson: import("@prisma/client/runtime/library").JsonValue | null;
     }>;

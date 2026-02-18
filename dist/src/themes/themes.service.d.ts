@@ -13,9 +13,9 @@ export declare class ThemesService {
     storeTheme(storeId: string): Promise<{
         theme: {
             id: string;
-            storeId: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
             preset: string | null;
             customJson: Prisma.JsonValue | null;
         } | null;
@@ -33,9 +33,9 @@ export declare class ThemesService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         preset: string | null;
         customJson: Prisma.JsonValue | null;
     }>;

@@ -10,13 +10,13 @@ export declare class StoresService {
         slug: string;
         themePreset?: string;
     }): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
@@ -24,22 +24,22 @@ export declare class StoresService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }[]>;
     findOne(id: string): Prisma.Prisma__StoreClient<({
         trackingConfig: {
             id: string;
-            storeId: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
             pixelId: string | null;
             gtmId: string | null;
             capiToken: string | null;
@@ -47,20 +47,20 @@ export declare class StoresService {
         } | null;
         themeConfig: {
             id: string;
-            storeId: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
             preset: string | null;
             customJson: Prisma.JsonValue | null;
         } | null;
     } & {
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }) | null, null, import("@prisma/client/runtime/library").DefaultArgs>;
@@ -73,13 +73,13 @@ export declare class StoresService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
@@ -87,13 +87,13 @@ export declare class StoresService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
@@ -106,9 +106,9 @@ export declare class StoresService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         pixelId: string | null;
         gtmId: string | null;
         capiToken: string | null;
@@ -122,9 +122,9 @@ export declare class StoresService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         preset: string | null;
         customJson: Prisma.JsonValue | null;
     }>;

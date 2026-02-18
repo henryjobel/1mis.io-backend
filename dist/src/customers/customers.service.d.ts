@@ -9,34 +9,12 @@ export declare class CustomersService {
         totalSpent: import("@prisma/client/runtime/library").Decimal | null;
     }[]>;
     orders(storeId: string, email: string): import(".prisma/client").Prisma.PrismaPromise<({
-        items: {
-            id: string;
-            createdAt: Date;
-            orderId: string;
-            productId: string | null;
-            productNameSnapshot: string;
-            qty: number;
-            unitPrice: import("@prisma/client/runtime/library").Decimal;
-        }[];
-        paymentTxns: {
-            id: string;
-            storeId: string;
-            status: string;
-            createdAt: Date;
-            updatedAt: Date;
-            orderId: string | null;
-            provider: string;
-            providerRef: string | null;
-            amount: import("@prisma/client/runtime/library").Decimal;
-            currency: string;
-            metadata: import("@prisma/client/runtime/library").JsonValue | null;
-        }[];
         shipment: {
             id: string;
-            storeId: string;
-            status: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
+            status: string;
             orderId: string;
             courier: string;
             trackingNumber: string;
@@ -45,14 +23,36 @@ export declare class CustomersService {
             shippedAt: Date | null;
             deliveredAt: Date | null;
         } | null;
+        items: {
+            id: string;
+            createdAt: Date;
+            productId: string | null;
+            orderId: string;
+            productNameSnapshot: string;
+            qty: number;
+            unitPrice: import("@prisma/client/runtime/library").Decimal;
+        }[];
+        paymentTxns: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: string;
+            orderId: string | null;
+            provider: string;
+            providerRef: string | null;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            currency: string;
+            metadata: import("@prisma/client/runtime/library").JsonValue | null;
+        }[];
     } & {
         id: string;
-        storeId: string;
-        status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
         updatedAt: Date;
-        total: import("@prisma/client/runtime/library").Decimal;
+        storeId: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
         code: string;
+        total: import("@prisma/client/runtime/library").Decimal;
         customerName: string;
         customerEmail: string;
         customerPhone: string | null;

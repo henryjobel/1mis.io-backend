@@ -24,10 +24,10 @@ export declare class PaymentsService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
@@ -44,10 +44,10 @@ export declare class PaymentsService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
@@ -63,10 +63,10 @@ export declare class PaymentsService {
         role: Role;
     }): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
@@ -76,10 +76,10 @@ export declare class PaymentsService {
     }>;
     transactions(storeId: string): Prisma.PrismaPromise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;

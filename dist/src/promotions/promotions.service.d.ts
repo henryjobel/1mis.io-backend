@@ -6,18 +6,18 @@ export declare class PromotionsService {
     private readonly auditService;
     constructor(prisma: PrismaService, auditService: AuditService);
     listCoupons(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
-        type: string;
         id: string;
-        storeId: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        storeId: string;
         code: string;
         value: import("@prisma/client/runtime/library").Decimal;
         minOrderAmount: import("@prisma/client/runtime/library").Decimal | null;
         maxDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startsAt: Date | null;
         endsAt: Date | null;
-        isActive: boolean;
         usageLimit: number | null;
         usedCount: number;
     }[]>;
@@ -32,18 +32,18 @@ export declare class PromotionsService {
         id: string;
         role: Role;
     }): Promise<{
-        type: string;
         id: string;
-        storeId: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        storeId: string;
         code: string;
         value: import("@prisma/client/runtime/library").Decimal;
         minOrderAmount: import("@prisma/client/runtime/library").Decimal | null;
         maxDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startsAt: Date | null;
         endsAt: Date | null;
-        isActive: boolean;
         usageLimit: number | null;
         usedCount: number;
     }>;
@@ -51,18 +51,18 @@ export declare class PromotionsService {
         id: string;
         role: Role;
     }): Promise<{
-        type: string;
         id: string;
-        storeId: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        storeId: string;
         code: string;
         value: import("@prisma/client/runtime/library").Decimal;
         minOrderAmount: import("@prisma/client/runtime/library").Decimal | null;
         maxDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startsAt: Date | null;
         endsAt: Date | null;
-        isActive: boolean;
         usageLimit: number | null;
         usedCount: number;
     }>;
@@ -70,28 +70,28 @@ export declare class PromotionsService {
         id: string;
         role: Role;
     }): Promise<{
-        type: string;
         id: string;
-        storeId: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        type: string;
+        storeId: string;
         code: string;
         value: import("@prisma/client/runtime/library").Decimal;
         minOrderAmount: import("@prisma/client/runtime/library").Decimal | null;
         maxDiscount: import("@prisma/client/runtime/library").Decimal | null;
         startsAt: Date | null;
         endsAt: Date | null;
-        isActive: boolean;
         usageLimit: number | null;
         usedCount: number;
     }>;
     listTaxRules(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
+        storeId: string;
         country: string | null;
         region: string | null;
         rate: import("@prisma/client/runtime/library").Decimal;
@@ -108,12 +108,12 @@ export declare class PromotionsService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
+        storeId: string;
         country: string | null;
         region: string | null;
         rate: import("@prisma/client/runtime/library").Decimal;
@@ -123,12 +123,12 @@ export declare class PromotionsService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
+        storeId: string;
         country: string | null;
         region: string | null;
         rate: import("@prisma/client/runtime/library").Decimal;
@@ -138,12 +138,12 @@ export declare class PromotionsService {
         id: string;
         role: Role;
     }): Promise<{
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
+        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        isActive: boolean;
+        storeId: string;
         country: string | null;
         region: string | null;
         rate: import("@prisma/client/runtime/library").Decimal;

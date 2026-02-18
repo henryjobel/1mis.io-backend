@@ -29,9 +29,9 @@ export declare class PublicStoreController {
     meta(slug: string): Promise<{
         trackingConfig: {
             id: string;
-            storeId: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
             pixelId: string | null;
             gtmId: string | null;
             capiToken: string | null;
@@ -39,57 +39,57 @@ export declare class PublicStoreController {
         } | null;
         themeConfig: {
             id: string;
-            storeId: string;
             createdAt: Date;
             updatedAt: Date;
+            storeId: string;
             preset: string | null;
             customJson: import("@prisma/client/runtime/library").JsonValue | null;
         } | null;
     } & {
-        name: string;
         id: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
         ownerId: string;
         slug: string;
+        status: import(".prisma/client").$Enums.StoreStatus;
         themePreset: string | null;
         publishedAt: Date | null;
     }>;
     products(slug: string, category?: string, q?: string, sort?: string, page?: string, limit?: string, minPrice?: string, maxPrice?: string): Promise<{
         items: ({
             category: {
-                name: string;
                 id: string;
-                storeId: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
+                storeId: string;
                 slug: string;
             } | null;
             variants: {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                productId: string;
                 sku: string | null;
                 price: import("@prisma/client/runtime/library").Decimal | null;
                 stock: number;
                 optionName: string;
                 optionValue: string;
+                productId: string;
             }[];
         } & {
             id: string;
-            storeId: string;
-            status: string;
             createdAt: Date;
             updatedAt: Date;
-            description: string | null;
+            storeId: string;
+            status: string;
             title: string;
+            description: string | null;
             sku: string | null;
             imageUrl: string | null;
-            categoryId: string | null;
             price: import("@prisma/client/runtime/library").Decimal;
             stock: number;
+            categoryId: string | null;
         })[];
         page: number;
         limit: number;
@@ -97,117 +97,117 @@ export declare class PublicStoreController {
         totalPages: number;
     }>;
     product(slug: string, productId: string): Promise<{
-        reviews: {
+        category: {
             id: string;
-            storeId: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            productId: string;
-            title: string | null;
-            isApproved: boolean;
+            storeId: string;
+            slug: string;
+        } | null;
+        reviews: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
             userId: string | null;
+            title: string | null;
+            productId: string;
             customer: string | null;
             rating: number;
             comment: string | null;
+            isApproved: boolean;
         }[];
-        category: {
-            name: string;
-            id: string;
-            storeId: string;
-            createdAt: Date;
-            updatedAt: Date;
-            slug: string;
-        } | null;
         variants: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            productId: string;
             sku: string | null;
             price: import("@prisma/client/runtime/library").Decimal | null;
             stock: number;
             optionName: string;
             optionValue: string;
+            productId: string;
         }[];
     } & {
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
+        storeId: string;
+        status: string;
         title: string;
+        description: string | null;
         sku: string | null;
         imageUrl: string | null;
-        categoryId: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         stock: number;
+        categoryId: string | null;
     }>;
     categories(slug: string): Promise<({
         _count: {
             products: number;
         };
     } & {
-        name: string;
         id: string;
-        storeId: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
         slug: string;
     })[]>;
     trending(slug: string): Promise<{
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
+        storeId: string;
+        status: string;
         title: string;
+        description: string | null;
         sku: string | null;
         imageUrl: string | null;
-        categoryId: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         stock: number;
+        categoryId: string | null;
     }[]>;
     bestSelling(slug: string): Promise<({
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
-        description: string | null;
+        storeId: string;
+        status: string;
         title: string;
+        description: string | null;
         sku: string | null;
         imageUrl: string | null;
-        categoryId: string | null;
         price: import("@prisma/client/runtime/library").Decimal;
         stock: number;
+        categoryId: string | null;
     } | undefined)[]>;
     reviews(slug: string, productId?: string): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
-        title: string | null;
-        isApproved: boolean;
+        storeId: string;
         userId: string | null;
+        title: string | null;
+        productId: string;
         customer: string | null;
         rating: number;
         comment: string | null;
+        isApproved: boolean;
     }[]>;
     createReview(slug: string, dto: CreateReviewDto): Promise<{
         id: string;
-        storeId: string;
         createdAt: Date;
         updatedAt: Date;
-        productId: string;
-        title: string | null;
-        isApproved: boolean;
+        storeId: string;
         userId: string | null;
+        title: string | null;
+        productId: string;
         customer: string | null;
         rating: number;
         comment: string | null;
+        isApproved: boolean;
     }>;
     cart(slug: string, sessionId: string): Promise<{
         id: null;
@@ -220,44 +220,44 @@ export declare class PublicStoreController {
         items: ({
             product: {
                 id: string;
-                storeId: string;
-                status: string;
                 createdAt: Date;
                 updatedAt: Date;
-                description: string | null;
+                storeId: string;
+                status: string;
                 title: string;
+                description: string | null;
                 sku: string | null;
                 imageUrl: string | null;
-                categoryId: string | null;
                 price: import("@prisma/client/runtime/library").Decimal;
                 stock: number;
+                categoryId: string | null;
             };
             variant: {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                productId: string;
                 sku: string | null;
                 price: import("@prisma/client/runtime/library").Decimal | null;
                 stock: number;
                 optionName: string;
                 optionValue: string;
+                productId: string;
             } | null;
         } & {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             productId: string;
+            variantId: string | null;
             qty: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
             cartId: string;
-            variantId: string | null;
         })[];
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         userId: string | null;
         sessionId: string | null;
     }>;
@@ -272,44 +272,44 @@ export declare class PublicStoreController {
         items: ({
             product: {
                 id: string;
-                storeId: string;
-                status: string;
                 createdAt: Date;
                 updatedAt: Date;
-                description: string | null;
+                storeId: string;
+                status: string;
                 title: string;
+                description: string | null;
                 sku: string | null;
                 imageUrl: string | null;
-                categoryId: string | null;
                 price: import("@prisma/client/runtime/library").Decimal;
                 stock: number;
+                categoryId: string | null;
             };
             variant: {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                productId: string;
                 sku: string | null;
                 price: import("@prisma/client/runtime/library").Decimal | null;
                 stock: number;
                 optionName: string;
                 optionValue: string;
+                productId: string;
             } | null;
         } & {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             productId: string;
+            variantId: string | null;
             qty: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
             cartId: string;
-            variantId: string | null;
         })[];
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         userId: string | null;
         sessionId: string | null;
     }>;
@@ -324,44 +324,44 @@ export declare class PublicStoreController {
         items: ({
             product: {
                 id: string;
-                storeId: string;
-                status: string;
                 createdAt: Date;
                 updatedAt: Date;
-                description: string | null;
+                storeId: string;
+                status: string;
                 title: string;
+                description: string | null;
                 sku: string | null;
                 imageUrl: string | null;
-                categoryId: string | null;
                 price: import("@prisma/client/runtime/library").Decimal;
                 stock: number;
+                categoryId: string | null;
             };
             variant: {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                productId: string;
                 sku: string | null;
                 price: import("@prisma/client/runtime/library").Decimal | null;
                 stock: number;
                 optionName: string;
                 optionValue: string;
+                productId: string;
             } | null;
         } & {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             productId: string;
+            variantId: string | null;
             qty: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
             cartId: string;
-            variantId: string | null;
         })[];
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         userId: string | null;
         sessionId: string | null;
     }>;
@@ -376,44 +376,44 @@ export declare class PublicStoreController {
         items: ({
             product: {
                 id: string;
-                storeId: string;
-                status: string;
                 createdAt: Date;
                 updatedAt: Date;
-                description: string | null;
+                storeId: string;
+                status: string;
                 title: string;
+                description: string | null;
                 sku: string | null;
                 imageUrl: string | null;
-                categoryId: string | null;
                 price: import("@prisma/client/runtime/library").Decimal;
                 stock: number;
+                categoryId: string | null;
             };
             variant: {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
-                productId: string;
                 sku: string | null;
                 price: import("@prisma/client/runtime/library").Decimal | null;
                 stock: number;
                 optionName: string;
                 optionValue: string;
+                productId: string;
             } | null;
         } & {
             id: string;
             createdAt: Date;
             updatedAt: Date;
             productId: string;
+            variantId: string | null;
             qty: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
             cartId: string;
-            variantId: string | null;
         })[];
         id: string;
-        storeId: string;
-        status: string;
         createdAt: Date;
         updatedAt: Date;
+        storeId: string;
+        status: string;
         userId: string | null;
         sessionId: string | null;
     }>;
@@ -421,20 +421,20 @@ export declare class PublicStoreController {
         items: {
             id: string;
             createdAt: Date;
-            orderId: string;
             productId: string | null;
+            orderId: string;
             productNameSnapshot: string;
             qty: number;
             unitPrice: import("@prisma/client/runtime/library").Decimal;
         }[];
     } & {
         id: string;
-        storeId: string;
-        status: import(".prisma/client").$Enums.OrderStatus;
         createdAt: Date;
         updatedAt: Date;
-        total: import("@prisma/client/runtime/library").Decimal;
+        storeId: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
         code: string;
+        total: import("@prisma/client/runtime/library").Decimal;
         customerName: string;
         customerEmail: string;
         customerPhone: string | null;
