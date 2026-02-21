@@ -7,7 +7,15 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { IsOptional, IsString, IsUrl } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Max,
+  Min,
+} from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { StoreAccessGuard } from '../common/guards/store-access.guard';
@@ -20,6 +28,40 @@ class CreateMediaDto {
 
   @IsUrl()
   url!: string;
+
+  @IsOptional()
+  @IsString()
+  altText?: string;
+}
+
+class CreateMediaUploadSessionDto {
+  @IsString()
+  type!: string;
+
+  @IsString()
+  filename!: string;
+
+  @IsString()
+  mimeType!: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5 * 1024 * 1024)
+  sizeBytes!: number;
+
+  @IsOptional()
+  @IsString()
+  altText?: string;
+}
+
+class CompleteMediaUploadDto {
+  @IsString()
+  uploadId!: string;
+
+  @IsOptional()
+  @IsUrl()
+  url?: string;
 
   @IsOptional()
   @IsString()
@@ -43,6 +85,24 @@ export class MediaController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.mediaService.upload(storeId, dto, user);
+  }
+
+  @Post('presign')
+  createUploadSession(
+    @Param('id') storeId: string,
+    @Body() dto: CreateMediaUploadSessionDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.mediaService.createUploadSession(storeId, dto, user);
+  }
+
+  @Post('complete')
+  completeUpload(
+    @Param('id') storeId: string,
+    @Body() dto: CompleteMediaUploadDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.mediaService.completeUpload(storeId, dto, user);
   }
 
   @Delete(':assetId')

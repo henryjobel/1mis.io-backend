@@ -38,6 +38,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
+        businessName: dto.businessName?.trim() || null,
         email: dto.email,
         passwordHash,
         role: Role.owner,
@@ -65,6 +66,7 @@ export class AuthService {
       where: { email: dto.email },
     });
     if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user.isActive) throw new UnauthorizedException('Account is disabled');
 
     const ok = await compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Invalid credentials');
@@ -200,6 +202,7 @@ export class AuthService {
       select: {
         id: true,
         name: true,
+        businessName: true,
         email: true,
         role: true,
         isActive: true,
@@ -240,6 +243,7 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           name: normalizedEmail.split('@')[0],
+          businessName: null,
           email: normalizedEmail,
           passwordHash: await hash(randomUUID(), 10),
           role: Role.owner,

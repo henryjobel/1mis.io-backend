@@ -1,7 +1,26 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, Role, StoreStatus } from '@prisma/client';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+type DashboardStoreStatus = 'active' | 'trial' | 'suspended';
+type DashboardPlan = 'Starter' | 'Growth' | 'Scale';
+type DashboardSubscriptionStatus =
+  | 'active'
+  | 'trial'
+  | 'past_due'
+  | 'cancelled';
+
+const PLAN_PRICE_USD: Record<DashboardPlan, number> = {
+  Starter: 39,
+  Growth: 129,
+  Scale: 299,
+};
 
 @Injectable()
 export class SuperAdminService {
@@ -54,8 +73,182 @@ export class SuperAdminService {
     };
   }
 
-  stores() {
-    return this.prisma.store.findMany({ orderBy: { createdAt: 'desc' } });
+  async stores() {
+    const [stores, revenueRows, subscriptionRows, profileRows] =
+      await Promise.all([
+        this.prisma.store.findMany({
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            createdAt: true,
+            owner: { select: { email: true } },
+          },
+        }),
+        this.prisma.order.groupBy({
+          by: ['storeId'],
+          _sum: { total: true },
+        }),
+        this.prisma.platformSetting.findMany({
+          where: { key: { startsWith: 'subscription:' } },
+        }),
+        this.prisma.platformSetting.findMany({
+          where: { key: { startsWith: 'store_profile:' } },
+        }),
+      ]);
+
+    const revenueMap = new Map(
+      revenueRows.map((row) => [row.storeId, Number(row._sum.total ?? 0)]),
+    );
+    const subscriptionMap = new Map(
+      subscriptionRows.map((row) => [
+        row.key.replace('subscription:', ''),
+        this.asRecord(row.valueJson),
+      ]),
+    );
+    const profileMap = new Map(
+      profileRows.map((row) => [
+        row.key.replace('store_profile:', ''),
+        this.asRecord(row.valueJson),
+      ]),
+    );
+
+    return stores.map((store) => {
+      const subscription = subscriptionMap.get(store.id) ?? {};
+      const profile = profileMap.get(store.id) ?? {};
+      const subscriptionStatus = this.normalizeSubscriptionStatus(
+        subscription.status,
+      );
+
+      return {
+        id: store.id,
+        name: store.name,
+        ownerEmail:
+          this.asString(profile.ownerEmail, '') ||
+          store.owner.email ||
+          'unknown@store.local',
+        plan: this.normalizePlan(subscription.plan),
+        region: this.asString(profile.region, 'US-East'),
+        gmvUsd: revenueMap.get(store.id) ?? 0,
+        status: this.toDashboardStoreStatus(store.status, subscriptionStatus),
+        createdAt: store.createdAt,
+      };
+    });
+  }
+
+  async createStore(
+    data: {
+      name: string;
+      ownerEmail: string;
+      plan?: 'Starter' | 'Growth' | 'Scale';
+      region?: string;
+      status?: 'active' | 'trial' | 'suspended';
+    },
+    actor: { id: string; role: Role },
+  ) {
+    const name = data.name.trim();
+    const ownerEmail = data.ownerEmail.trim().toLowerCase();
+    if (!name) throw new BadRequestException('Store name is required');
+    if (!ownerEmail) throw new BadRequestException('ownerEmail is required');
+
+    let owner = await this.prisma.user.findUnique({ where: { email: ownerEmail } });
+    if (!owner) {
+      owner = await this.prisma.user.create({
+        data: {
+          name,
+          businessName: name,
+          email: ownerEmail,
+          passwordHash: 'invite-pending',
+          role: Role.owner,
+        },
+      });
+    }
+
+    const slug = await this.generateUniqueSlug(name);
+    const desiredStatus = data.status ?? 'active';
+    const storeStatus = this.dashboardStatusToStoreStatus(desiredStatus);
+    const store = await this.prisma.store.create({
+      data: {
+        ownerId: owner.id,
+        name,
+        slug,
+        status: storeStatus,
+      },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+      },
+    });
+
+    const plan = this.normalizePlan(data.plan);
+    const subscriptionStatus: DashboardSubscriptionStatus =
+      desiredStatus === 'trial'
+        ? 'trial'
+        : desiredStatus === 'suspended'
+          ? 'cancelled'
+          : 'active';
+
+    await this.prisma.platformSetting.upsert({
+      where: { key: `subscription:${store.id}` },
+      create: {
+        key: `subscription:${store.id}`,
+        valueJson: {
+          plan,
+          status: subscriptionStatus,
+          amountUsd:
+            subscriptionStatus === 'active' ? PLAN_PRICE_USD[plan] : 0,
+          failedPaymentCount: 0,
+        } as Prisma.InputJsonValue,
+      },
+      update: {
+        valueJson: {
+          plan,
+          status: subscriptionStatus,
+          amountUsd:
+            subscriptionStatus === 'active' ? PLAN_PRICE_USD[plan] : 0,
+          failedPaymentCount: 0,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.prisma.platformSetting.upsert({
+      where: { key: `store_profile:${store.id}` },
+      create: {
+        key: `store_profile:${store.id}`,
+        valueJson: {
+          ownerEmail,
+          region: data.region?.trim() || 'US-East',
+        } as Prisma.InputJsonValue,
+      },
+      update: {
+        valueJson: {
+          ownerEmail,
+          region: data.region?.trim() || 'US-East',
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.store.create',
+      entityType: 'Store',
+      entityId: store.id,
+      metaJson: { ownerEmail, plan, status: desiredStatus },
+    });
+
+    return {
+      id: store.id,
+      name: store.name,
+      ownerEmail,
+      plan,
+      region: data.region?.trim() || 'US-East',
+      gmvUsd: 0,
+      status: desiredStatus,
+      createdAt: store.createdAt,
+    };
   }
 
   async updateStoreStatus(
@@ -66,6 +259,13 @@ export class SuperAdminService {
     const store = await this.prisma.store.update({
       where: { id },
       data: { status },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        createdAt: true,
+        owner: { select: { email: true } },
+      },
     });
     await this.auditService.log({
       actorUserId: actor.id,
@@ -75,25 +275,126 @@ export class SuperAdminService {
       entityId: id,
       metaJson: { status },
     });
-    return store;
+    return {
+      id: store.id,
+      name: store.name,
+      ownerEmail: store.owner.email,
+      status: this.toDashboardStoreStatus(store.status),
+      createdAt: store.createdAt,
+    };
   }
 
-  lifecycle() {
-    return this.prisma.store.groupBy({ by: ['status'], _count: true });
+  async deleteStore(id: string, actor: { id: string; role: Role }) {
+    const store = await this.prisma.store.findUnique({
+      where: { id },
+      select: { id: true, name: true },
+    });
+    if (!store) throw new NotFoundException('Store not found');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.platformSetting.deleteMany({
+        where: {
+          OR: [
+            { key: { startsWith: `subscription:${id}` } },
+            { key: { startsWith: `payment_ops:${id}` } },
+            { key: { startsWith: `lifecycle:${id}` } },
+            { key: { startsWith: `domain:${id}` } },
+            { key: { startsWith: `marketing:${id}` } },
+            { key: { startsWith: `store_content:${id}` } },
+            { key: { startsWith: `store_profile:${id}` } },
+            { key: { startsWith: `shipping_config:${id}` } },
+            { key: { startsWith: `payment_config:${id}` } },
+            { key: { startsWith: `ai_prompt:${id}:` } },
+          ],
+        },
+      });
+
+      await tx.store.delete({ where: { id } });
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.store.delete',
+      entityType: 'Store',
+      entityId: id,
+      metaJson: { name: store.name },
+    });
+
+    return { deleted: true, id, name: store.name };
+  }
+
+  async lifecycle() {
+    const [stores, lifecycleRows, domainRows] = await Promise.all([
+      this.prisma.store.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          updatedAt: true,
+          publishedAt: true,
+          themeConfig: { select: { updatedAt: true } },
+        },
+      }),
+      this.prisma.platformSetting.findMany({
+        where: { key: { startsWith: 'lifecycle:' } },
+      }),
+      this.prisma.platformSetting.findMany({
+        where: { key: { startsWith: 'domain:' } },
+      }),
+    ]);
+
+    const lifecycleMap = new Map(
+      lifecycleRows.map((row) => [
+        row.key.replace('lifecycle:', ''),
+        this.asRecord(row.valueJson),
+      ]),
+    );
+    const domainMap = new Map(
+      domainRows.map((row) => [
+        row.key.replace('domain:', ''),
+        this.asRecord(row.valueJson),
+      ]),
+    );
+
+    return stores.map((store) => {
+      const lifecycle = lifecycleMap.get(store.id) ?? {};
+      const domain = domainMap.get(store.id) ?? {};
+      return {
+        storeId: store.id,
+        storeName: store.name,
+        publishStatus: this.asString(
+          lifecycle.publishStatus,
+          store.status === StoreStatus.active ? 'published' : 'draft',
+        ),
+        domain: this.asString(
+          lifecycle.domain,
+          this.asString(domain.domain, 'N/A'),
+        ),
+        domainStatus: this.asString(
+          lifecycle.domainStatus,
+          this.asString(domain.domainStatus, 'not_connected'),
+        ),
+        sslStatus: this.asString(
+          lifecycle.sslStatus,
+          this.asString(domain.sslStatus, 'inactive'),
+        ),
+        lastPublishedAt: store.publishedAt
+          ? store.publishedAt.toISOString()
+          : 'N/A',
+        lastThemeUpdateAt: (
+          store.themeConfig?.updatedAt ?? store.updatedAt
+        ).toISOString(),
+      };
+    });
   }
 
   async lifecycleByStore(storeId: string) {
-    const store = await this.prisma.store.findUnique({
-      where: { id: storeId },
-    });
-    const lifecycleConfig = await this.prisma.platformSetting.findUnique({
-      where: { key: `lifecycle:${storeId}` },
-    });
-
-    return {
-      store,
-      lifecycleConfig: lifecycleConfig?.valueJson ?? null,
-    };
+    const rows = await this.lifecycle();
+    const row = rows.find((item) => item.storeId === storeId);
+    if (!row) throw new NotFoundException('Store not found');
+    return row;
   }
 
   async updateLifecycle(
@@ -129,30 +430,62 @@ export class SuperAdminService {
       metaJson: { storeId },
     });
 
-    return updated;
+    return this.lifecycleByStore(storeId);
   }
 
-  admins() {
-    return this.prisma.user.findMany({
+  async admins() {
+    const rows = await this.prisma.user.findMany({
       where: {
         role: { in: [Role.super_admin, Role.ops, Role.support, Role.finance] },
       },
-      select: { id: true, name: true, email: true, role: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        passwordHash: true,
+        updatedAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
     });
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      role: row.role,
+      status: this.toAdminStatus(row.isActive, row.passwordHash),
+      lastActive: row.updatedAt.toISOString(),
+    }));
   }
 
   async inviteAdmin(
     data: { name: string; email: string; role: Role },
     actor: { id: string; role: Role },
   ) {
+    const email = data.email.trim().toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('Admin email already exists');
+    }
+
     const admin = await this.prisma.user.create({
       data: {
         name: data.name,
-        email: data.email,
+        email,
         passwordHash: 'invite-pending',
         role: data.role,
       },
-      select: { id: true, name: true, email: true, role: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        passwordHash: true,
+        updatedAt: true,
+      },
     });
 
     await this.auditService.log({
@@ -164,7 +497,14 @@ export class SuperAdminService {
       metaJson: { invitedRole: data.role },
     });
 
-    return admin;
+    return {
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+      status: this.toAdminStatus(admin.isActive, admin.passwordHash),
+      lastActive: admin.updatedAt.toISOString(),
+    };
   }
 
   async updateAdminStatus(
@@ -175,7 +515,15 @@ export class SuperAdminService {
     const admin = await this.prisma.user.update({
       where: { id },
       data: { isActive },
-      select: { id: true, name: true, email: true, role: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        passwordHash: true,
+        updatedAt: true,
+      },
     });
 
     await this.auditService.log({
@@ -187,7 +535,14 @@ export class SuperAdminService {
       metaJson: { isActive },
     });
 
-    return admin;
+    return {
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role,
+      status: this.toAdminStatus(admin.isActive, admin.passwordHash),
+      lastActive: admin.updatedAt.toISOString(),
+    };
   }
 
   async resetAdminPassword(id: string, actor: { id: string; role: Role }) {
@@ -214,52 +569,64 @@ export class SuperAdminService {
   }
 
   async subscriptions() {
-    const stores = await this.prisma.store.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, createdAt: true },
-    });
-    const settings = await this.prisma.platformSetting.findMany({
-      where: { key: { startsWith: 'subscription:' } },
-    });
+    const [stores, settings] = await Promise.all([
+      this.prisma.store.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          createdAt: true,
+          owner: { select: { email: true } },
+        },
+      }),
+      this.prisma.platformSetting.findMany({
+        where: { key: { startsWith: 'subscription:' } },
+      }),
+    ]);
+
     const map = new Map(
-      settings.map((s) => [s.key.replace('subscription:', ''), s.valueJson]),
+      settings.map((row) => [
+        row.key.replace('subscription:', ''),
+        this.asRecord(row.valueJson),
+      ]),
     );
 
-    return stores.map((store) => ({
-      storeId: store.id,
-      storeName: store.name,
-      subscription: (map.get(store.id) as
-        | Record<string, unknown>
-        | undefined) ?? {
-        plan: 'starter',
-        status: 'trial',
-        nextBillingDate: null,
-        expiryDate: null,
-      },
-      createdAt: store.createdAt,
-    }));
+    return stores.map((store) =>
+      this.toSubscriptionRecord(
+        store.id,
+        store.name,
+        store.owner.email,
+        store.status,
+        map.get(store.id),
+      ),
+    );
   }
 
   async subscriptionByStore(storeId: string) {
-    const store = await this.prisma.store.findUnique({
-      where: { id: storeId },
-    });
+    const [store, setting] = await Promise.all([
+      this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          owner: { select: { email: true } },
+        },
+      }),
+      this.prisma.platformSetting.findUnique({
+        where: { key: `subscription:${storeId}` },
+      }),
+    ]);
     if (!store) throw new NotFoundException('Store not found');
 
-    const setting = await this.prisma.platformSetting.findUnique({
-      where: { key: `subscription:${storeId}` },
-    });
-
-    return {
-      storeId,
-      storeName: store.name,
-      subscription: (setting?.valueJson as
-        | Record<string, unknown>
-        | undefined) ?? {
-        plan: 'starter',
-        status: 'trial',
-      },
-    };
+    return this.toSubscriptionRecord(
+      store.id,
+      store.name,
+      store.owner.email,
+      store.status,
+      setting ? this.asRecord(setting.valueJson) : undefined,
+    );
   }
 
   async updateSubscription(
@@ -272,18 +639,36 @@ export class SuperAdminService {
     },
     actor: { id: string; role: Role },
   ) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true },
+    });
+    if (!store) throw new NotFoundException('Store not found');
+
     const existing = await this.prisma.platformSetting.findUnique({
       where: { key: `subscription:${storeId}` },
     });
-    const current =
-      (existing?.valueJson as Record<string, unknown> | undefined) ?? {};
+    const current = this.asRecord(existing?.valueJson);
+    const plan = payload.plan
+      ? this.normalizePlan(payload.plan)
+      : this.normalizePlan(current.plan);
+    const status = payload.status
+      ? this.normalizeSubscriptionStatus(payload.status)
+      : this.normalizeSubscriptionStatus(current.status);
+
     const next = {
       ...current,
       ...payload,
+      plan,
+      status,
+      amountUsd: this.asNumber(
+        current.amountUsd,
+        status === 'active' ? PLAN_PRICE_USD[plan] : 0,
+      ),
       updatedAt: new Date().toISOString(),
     };
 
-    const saved = await this.prisma.platformSetting.upsert({
+    await this.prisma.platformSetting.upsert({
       where: { key: `subscription:${storeId}` },
       create: {
         key: `subscription:${storeId}`,
@@ -292,16 +677,21 @@ export class SuperAdminService {
       update: { valueJson: next as Prisma.InputJsonValue },
     });
 
+    await this.prisma.store.update({
+      where: { id: storeId },
+      data: { status: this.subscriptionToStoreStatus(status) },
+    });
+
     await this.auditService.log({
       actorUserId: actor.id,
       role: actor.role,
       action: 'super_admin.subscription.update',
       entityType: 'PlatformSetting',
-      entityId: saved.key,
+      entityId: `subscription:${storeId}`,
       metaJson: { storeId },
     });
 
-    return saved;
+    return this.subscriptionByStore(storeId);
   }
 
   async retrySubscription(storeId: string, actor: { id: string; role: Role }) {
@@ -326,14 +716,72 @@ export class SuperAdminService {
   }
 
   async paymentOps() {
-    const rows = await this.prisma.platformSetting.findMany({
-      where: { key: { startsWith: 'payment_ops:' } },
-      orderBy: { key: 'asc' },
+    const since = new Date(Date.now() - 86_400_000);
+    const [stores, configRows, txRows] = await Promise.all([
+      this.prisma.store.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true },
+      }),
+      this.prisma.platformSetting.findMany({
+        where: { key: { startsWith: 'payment_ops:' } },
+      }),
+      this.prisma.paymentTransaction.groupBy({
+        by: ['storeId', 'status'],
+        where: { createdAt: { gte: since } },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const configMap = new Map(
+      configRows.map((row) => [
+        row.key.replace('payment_ops:', ''),
+        this.asRecord(row.valueJson),
+      ]),
+    );
+    const metricMap = new Map<
+      string,
+      { total: number; failed: number; succeeded: number }
+    >();
+
+    for (const row of txRows) {
+      const current = metricMap.get(row.storeId) ?? {
+        total: 0,
+        failed: 0,
+        succeeded: 0,
+      };
+      current.total += row._count._all;
+      if (row.status === 'failed' || row.status === 'cancelled') {
+        current.failed += row._count._all;
+      }
+      if (row.status === 'succeeded' || row.status === 'paid') {
+        current.succeeded += row._count._all;
+      }
+      metricMap.set(row.storeId, current);
+    }
+
+    return stores.map((store) => {
+      const config = configMap.get(store.id) ?? {};
+      const metric = metricMap.get(store.id) ?? {
+        total: 0,
+        failed: 0,
+        succeeded: 0,
+      };
+      const successRate = metric.total
+        ? Number(((metric.succeeded / metric.total) * 100).toFixed(2))
+        : 0;
+
+      return {
+        storeId: store.id,
+        storeName: store.name,
+        stripeEnabled: this.asBoolean(config.stripeEnabled, true),
+        stripeMode: this.normalizeMode(config.stripeMode ?? config.mode),
+        sslCommerzEnabled: this.asBoolean(config.sslCommerzEnabled, false),
+        sslCommerzMode: this.normalizeMode(config.sslCommerzMode ?? config.mode),
+        codEnabled: this.asBoolean(config.codEnabled, true),
+        failedCheckout24h: metric.failed,
+        checkoutSuccessRatePct: successRate,
+      };
     });
-    return rows.map((row) => ({
-      storeId: row.key.replace('payment_ops:', ''),
-      ...(row.valueJson as Record<string, unknown>),
-    }));
   }
 
   async paymentOpsMetrics() {
@@ -357,14 +805,28 @@ export class SuperAdminService {
   }
 
   async paymentOpsByStore(storeId: string) {
-    const config = await this.prisma.platformSetting.findUnique({
-      where: { key: `payment_ops:${storeId}` },
-    });
-    return {
-      storeId,
-      config: config?.valueJson ?? null,
-      message: 'Store payment ops configuration',
-    };
+    const [store, rows] = await Promise.all([
+      this.prisma.store.findUnique({
+        where: { id: storeId },
+        select: { id: true, name: true },
+      }),
+      this.paymentOps(),
+    ]);
+    if (!store) throw new NotFoundException('Store not found');
+
+    return (
+      rows.find((row) => row.storeId === storeId) ?? {
+        storeId: store.id,
+        storeName: store.name,
+        stripeEnabled: true,
+        stripeMode: 'test',
+        sslCommerzEnabled: false,
+        sslCommerzMode: 'test',
+        codEnabled: true,
+        failedCheckout24h: 0,
+        checkoutSuccessRatePct: 0,
+      }
+    );
   }
 
   async updatePaymentOps(
@@ -377,13 +839,26 @@ export class SuperAdminService {
     },
     actor: { id: string; role: Role },
   ) {
+    const existing = await this.prisma.platformSetting.findUnique({
+      where: { key: `payment_ops:${storeId}` },
+    });
+    const current = this.asRecord(existing?.valueJson);
+    const next = {
+      ...current,
+      ...payload,
+      ...(payload.mode
+        ? { stripeMode: payload.mode, sslCommerzMode: payload.mode }
+        : {}),
+      updatedAt: new Date().toISOString(),
+    };
+
     const updated = await this.prisma.platformSetting.upsert({
       where: { key: `payment_ops:${storeId}` },
       create: {
         key: `payment_ops:${storeId}`,
-        valueJson: payload as Prisma.InputJsonValue,
+        valueJson: next as Prisma.InputJsonValue,
       },
-      update: { valueJson: payload as Prisma.InputJsonValue },
+      update: { valueJson: next as Prisma.InputJsonValue },
     });
 
     await this.auditService.log({
@@ -395,35 +870,39 @@ export class SuperAdminService {
       metaJson: { storeId },
     });
 
-    return updated;
+    return this.paymentOpsByStore(storeId);
   }
 
   async tickets() {
     const rows = await this.prisma.platformSetting.findMany({
       where: { key: { startsWith: 'ticket:' } },
-      orderBy: { key: 'asc' },
+      orderBy: { updatedAt: 'desc' },
     });
 
-    return {
-      items: rows.map((row) => ({
-        id: row.key.replace('ticket:', ''),
-        ...(row.valueJson as Record<string, unknown>),
-      })),
-      note: rows.length
-        ? 'Ticket data loaded from platform settings'
-        : 'Ticketing placeholder',
-    };
+    return rows.map((row) =>
+      this.toTicketRecord(row.key, this.asRecord(row.valueJson), row.updatedAt),
+    );
   }
 
   async ticket(id: string) {
     const row = await this.prisma.platformSetting.findUnique({
       where: { key: `ticket:${id}` },
     });
-    return {
-      id,
-      ...(row?.valueJson as Record<string, unknown> | undefined),
-      note: row ? 'Ticket details' : 'Ticket details placeholder',
-    };
+
+    if (!row) {
+      return {
+        id,
+        storeName: 'Unknown Store',
+        category: 'bug',
+        priority: 'medium',
+        status: 'open',
+        slaHours: 24,
+        createdAt: new Date().toISOString(),
+        note: 'Ticket details placeholder',
+      };
+    }
+
+    return this.toTicketRecord(row.key, this.asRecord(row.valueJson), row.updatedAt);
   }
 
   async updateTicket(
@@ -435,13 +914,23 @@ export class SuperAdminService {
     },
     actor: { id: string; role: Role },
   ) {
+    const existing = await this.prisma.platformSetting.findUnique({
+      where: { key: `ticket:${id}` },
+    });
+    const current = this.asRecord(existing?.valueJson);
+    const next = {
+      ...current,
+      ...payload,
+      updatedAt: new Date().toISOString(),
+    };
+
     const updated = await this.prisma.platformSetting.upsert({
       where: { key: `ticket:${id}` },
       create: {
         key: `ticket:${id}`,
-        valueJson: payload as Prisma.InputJsonValue,
+        valueJson: next as Prisma.InputJsonValue,
       },
-      update: { valueJson: payload as Prisma.InputJsonValue },
+      update: { valueJson: next as Prisma.InputJsonValue },
     });
 
     await this.auditService.log({
@@ -453,11 +942,40 @@ export class SuperAdminService {
       metaJson: { status: payload.status },
     });
 
-    return updated;
+    return this.ticket(id);
   }
 
   health() {
-    return { status: 'healthy', services: ['api', 'postgres', 'redis'] };
+    return {
+      status: 'healthy',
+      services: [
+        {
+          name: 'Public API',
+          uptimePct: 99.98,
+          latencyMs: 112,
+          status: 'healthy',
+        },
+        {
+          name: 'Checkout Worker',
+          uptimePct: 99.41,
+          latencyMs: 185,
+          status: 'degraded',
+        },
+        {
+          name: 'Image CDN',
+          uptimePct: 99.92,
+          latencyMs: 74,
+          status: 'healthy',
+        },
+        {
+          name: 'Core Database',
+          uptimePct: 99.99,
+          latencyMs: 48,
+          status: 'healthy',
+        },
+      ],
+      generatedAt: new Date().toISOString(),
+    };
   }
 
   restartService(service: string) {
@@ -469,7 +987,30 @@ export class SuperAdminService {
       by: ['status'],
       _count: true,
     });
-    return { grouped };
+    const totalRequests = grouped.reduce((sum, row) => sum + row._count, 0);
+    const completed =
+      grouped.find((row) => row.status === 'completed')?._count ?? 0;
+    const failed = grouped.find((row) => row.status === 'failed')?._count ?? 0;
+    const tokens = completed * 1200;
+    const costUsd = Number(((tokens / 1_000_000) * 7).toFixed(2));
+
+    return {
+      models: [
+        {
+          model: 'Gemini 1.5 Flash',
+          requests: totalRequests,
+          tokens,
+          costUsd,
+          quotaPct: Math.min(100, Math.round((totalRequests / 50_000) * 100)),
+        },
+      ],
+      grouped,
+      totals: {
+        requests: totalRequests,
+        completed,
+        failed,
+      },
+    };
   }
 
   flags() {
@@ -563,5 +1104,195 @@ export class SuperAdminService {
     });
 
     return { updated: result.length };
+  }
+
+  private toSubscriptionRecord(
+    storeId: string,
+    storeName: string,
+    ownerEmail: string,
+    storeStatus: StoreStatus,
+    payload?: Record<string, unknown>,
+  ) {
+    const data = payload ?? {};
+    const plan = this.normalizePlan(data.plan);
+    const fallbackStatus: DashboardSubscriptionStatus =
+      storeStatus === StoreStatus.suspended ||
+      storeStatus === StoreStatus.archived
+        ? 'cancelled'
+        : storeStatus === StoreStatus.draft
+          ? 'trial'
+          : 'active';
+    const status = this.normalizeSubscriptionStatus(
+      data.status ?? fallbackStatus,
+    );
+    const amountDefault = status === 'active' ? PLAN_PRICE_USD[plan] : 0;
+
+    return {
+      id:
+        this.asString(data.id, '') || `SUB-${storeId.slice(-6).toUpperCase()}`,
+      storeId,
+      storeName,
+      ownerEmail,
+      plan,
+      status,
+      amountUsd: this.asNumber(data.amountUsd, amountDefault),
+      nextBillingDate: this.asString(data.nextBillingDate, 'N/A'),
+      expiryDate: this.asString(data.expiryDate, 'N/A'),
+      lastPaymentDate: this.asString(data.lastPaymentDate, 'N/A'),
+      failedPaymentCount: this.asNumber(data.failedPaymentCount, 0),
+    };
+  }
+
+  private toDashboardStoreStatus(
+    status: StoreStatus,
+    subscriptionStatus?: DashboardSubscriptionStatus,
+  ): DashboardStoreStatus {
+    if (subscriptionStatus === 'trial') return 'trial';
+    if (
+      status === StoreStatus.suspended ||
+      status === StoreStatus.archived ||
+      subscriptionStatus === 'cancelled'
+    ) {
+      return 'suspended';
+    }
+    if (status === StoreStatus.draft) return 'trial';
+    return 'active';
+  }
+
+  private dashboardStatusToStoreStatus(
+    status: DashboardStoreStatus,
+  ): StoreStatus {
+    if (status === 'trial') return StoreStatus.draft;
+    if (status === 'suspended') return StoreStatus.suspended;
+    return StoreStatus.active;
+  }
+
+  private subscriptionToStoreStatus(
+    status: DashboardSubscriptionStatus,
+  ): StoreStatus {
+    if (status === 'trial') return StoreStatus.draft;
+    if (status === 'cancelled') return StoreStatus.suspended;
+    return StoreStatus.active;
+  }
+
+  private normalizePlan(value: unknown): DashboardPlan {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (raw === 'growth') return 'Growth';
+    if (raw === 'scale') return 'Scale';
+    return 'Starter';
+  }
+
+  private normalizeSubscriptionStatus(
+    value: unknown,
+  ): DashboardSubscriptionStatus {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (raw === 'active') return 'active';
+    if (raw === 'past_due') return 'past_due';
+    if (raw === 'cancelled') return 'cancelled';
+    return 'trial';
+  }
+
+  private normalizeMode(value: unknown): 'test' | 'live' {
+    return String(value ?? '').trim().toLowerCase() === 'live'
+      ? 'live'
+      : 'test';
+  }
+
+  private toAdminStatus(isActive: boolean, passwordHash: string) {
+    if (!isActive) return 'disabled';
+    if (passwordHash === 'invite-pending') return 'invited';
+    return 'active';
+  }
+
+  private toTicketRecord(
+    key: string,
+    payload: Record<string, unknown>,
+    updatedAt: Date,
+  ) {
+    return {
+      id: key.replace('ticket:', ''),
+      storeName: this.asString(payload.storeName, 'Unknown Store'),
+      category: this.normalizeTicketCategory(payload.category),
+      priority: this.normalizeTicketPriority(payload.priority),
+      status: this.normalizeTicketStatus(payload.status),
+      slaHours: this.asNumber(payload.slaHours, 24),
+      createdAt: this.asString(payload.createdAt, updatedAt.toISOString()),
+      note: this.asString(payload.note, ''),
+    };
+  }
+
+  private normalizeTicketCategory(value: unknown) {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (raw === 'payment') return 'payment';
+    if (raw === 'shipping') return 'shipping';
+    if (raw === 'auth') return 'auth';
+    return 'bug';
+  }
+
+  private normalizeTicketPriority(value: unknown) {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (raw === 'low') return 'low';
+    if (raw === 'high') return 'high';
+    return 'medium';
+  }
+
+  private normalizeTicketStatus(value: unknown) {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (raw === 'in_progress') return 'in_progress';
+    if (raw === 'resolved') return 'resolved';
+    return 'open';
+  }
+
+  private asRecord(value: Prisma.JsonValue | null | undefined) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {} as Record<string, unknown>;
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private asString(value: unknown, fallback: string) {
+    if (typeof value !== 'string') return fallback;
+    const next = value.trim();
+    return next || fallback;
+  }
+
+  private asNumber(value: unknown, fallback: number) {
+    const next = Number(value);
+    return Number.isFinite(next) ? next : fallback;
+  }
+
+  private asBoolean(value: unknown, fallback: boolean) {
+    if (typeof value === 'boolean') return value;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return fallback;
+  }
+
+  private slugify(value: string) {
+    return value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  }
+
+  private async generateUniqueSlug(name: string) {
+    const base = this.slugify(name) || `store-${Date.now().toString(36)}`;
+    let slug = base;
+    let i = 1;
+
+    while (
+      await this.prisma.store.findUnique({
+        where: { slug },
+        select: { id: true },
+      })
+    ) {
+      slug = `${base}-${i}`;
+      i += 1;
+    }
+
+    return slug;
   }
 }

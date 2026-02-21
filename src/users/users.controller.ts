@@ -9,6 +9,10 @@ class UpdateMeDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  businessName?: string;
 }
 
 @Controller('api/users')

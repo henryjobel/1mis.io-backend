@@ -11,6 +11,7 @@ export class UsersService {
       select: {
         id: true,
         name: true,
+        businessName: true,
         email: true,
         role: true,
         isActive: true,
@@ -20,11 +21,18 @@ export class UsersService {
     });
   }
 
-  updateMe(userId: string, data: { name?: string }) {
+  updateMe(userId: string, data: { name?: string; businessName?: string }) {
     return this.prisma.user.update({
       where: { id: userId },
       data,
-      select: { id: true, name: true, email: true, role: true, isActive: true },
+      select: {
+        id: true,
+        name: true,
+        businessName: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
     });
   }
 }

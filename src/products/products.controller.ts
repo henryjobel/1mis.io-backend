@@ -8,7 +8,15 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { StoreAccessGuard } from '../common/guards/store-access.guard';
@@ -16,41 +24,33 @@ import { RequestUser } from '../common/interfaces/request-user.interface';
 import { ProductsService } from './products.service';
 
 class CreateProductDto {
-  @IsString()
-  title!: string;
-
   @IsOptional()
   @IsString()
-  description?: string;
+  productName?: string;
 
-  @IsOptional()
-  @IsString()
-  sku?: string;
-
-  @IsOptional()
-  @IsString()
-  imageUrl?: string;
-
-  @IsOptional()
-  @IsString()
-  categoryId?: string;
-
-  @IsNumber()
-  price!: number;
-
-  @IsOptional()
-  @IsNumber()
-  stock?: number;
-}
-
-class UpdateProductDto {
   @IsOptional()
   @IsString()
   title?: string;
 
   @IsOptional()
   @IsString()
+  shortDescription?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  longDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  seoTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  seoMetaDescription?: string;
 
   @IsOptional()
   @IsString()
@@ -61,13 +61,124 @@ class UpdateProductDto {
   imageUrl?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
+
+  @IsOptional()
   @IsString()
   categoryId?: string;
 
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  suggestedPrice?: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  discountedPrice?: number;
+
+  @Type(() => Number)
   @IsOptional()
   @IsNumber()
   price?: number;
 
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  stock?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  reviewsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  stockTrackingEnabled?: boolean;
+
+  @IsOptional()
+  @IsDateString()
+  discountEndsAt?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  features?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  actionItems?: string[];
+}
+
+class UpdateProductDto {
+  @IsOptional()
+  @IsString()
+  productName?: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  shortDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  longDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  seoTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  seoMetaDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
+
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  suggestedPrice?: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  discountedPrice?: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsNumber()
+  price?: number;
+
+  @Type(() => Number)
   @IsOptional()
   @IsNumber()
   stock?: number;
@@ -75,6 +186,33 @@ class UpdateProductDto {
   @IsOptional()
   @IsString()
   status?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  reviewsEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  stockTrackingEnabled?: boolean;
+
+  @IsOptional()
+  @IsDateString()
+  discountEndsAt?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  features?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  actionItems?: string[];
 }
 
 class CreateVariantDto {
@@ -119,6 +257,16 @@ class UpdateVariantDto {
   stock?: number;
 }
 
+class DuplicateProductDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+}
+
 @Controller('api/stores/:id/products')
 @UseGuards(JwtAuthGuard, StoreAccessGuard)
 export class ProductsController {
@@ -160,6 +308,16 @@ export class ProductsController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.productsService.delete(storeId, productId, user);
+  }
+
+  @Post(':productId/duplicate')
+  duplicate(
+    @Param('id') storeId: string,
+    @Param('productId') productId: string,
+    @Body() dto: DuplicateProductDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.productsService.duplicate(storeId, productId, dto, user);
   }
 
   @Post(':productId/variants')

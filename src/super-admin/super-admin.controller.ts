@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -33,6 +34,26 @@ import { SuperAdminService } from './super-admin.service';
 class UpdateStoreStatusDto {
   @IsEnum(StoreStatus)
   status!: StoreStatus;
+}
+
+class CreateStoreDto {
+  @IsString()
+  name!: string;
+
+  @IsEmail()
+  ownerEmail!: string;
+
+  @IsOptional()
+  @IsIn(['Starter', 'Growth', 'Scale'])
+  plan?: 'Starter' | 'Growth' | 'Scale';
+
+  @IsOptional()
+  @IsString()
+  region?: string;
+
+  @IsOptional()
+  @IsIn(['active', 'trial', 'suspended'])
+  status?: 'active' | 'trial' | 'suspended';
 }
 
 class UpdateLifecycleDto {
@@ -176,6 +197,12 @@ export class SuperAdminController {
     return this.superAdminService.stores();
   }
 
+  @Post('stores')
+  @Roles(Role.super_admin, Role.ops)
+  createStore(@Body() dto: CreateStoreDto, @CurrentUser() user: RequestUser) {
+    return this.superAdminService.createStore(dto, user);
+  }
+
   @Patch('stores/:id/status')
   @Roles(Role.super_admin, Role.ops)
   updateStoreStatus(
@@ -184,6 +211,12 @@ export class SuperAdminController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.superAdminService.updateStoreStatus(id, dto.status, user);
+  }
+
+  @Delete('stores/:id')
+  @Roles(Role.super_admin)
+  deleteStore(@Param('id') id: string, @CurrentUser() user: RequestUser) {
+    return this.superAdminService.deleteStore(id, user);
   }
 
   @Get('lifecycle')
