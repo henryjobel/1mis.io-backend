@@ -10,18 +10,21 @@ import {
 } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDateString,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
+  IsUrl,
 } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { StoreAccessGuard } from '../common/guards/store-access.guard';
 import { RequestUser } from '../common/interfaces/request-user.interface';
-import { ProductsService } from './products.service';
+import { PRODUCT_AI_FIELDS, ProductsService } from './products.service';
 
 class CreateProductDto {
   @IsOptional()
@@ -267,6 +270,54 @@ class DuplicateProductDto {
   status?: string;
 }
 
+class GenerateProductAiDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsUrl({}, { each: true })
+  imageUrls?: string[];
+
+  @IsOptional()
+  @IsString()
+  prompt?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+}
+
+class RegenerateProductAiFieldDto {
+  @IsString()
+  @IsIn(PRODUCT_AI_FIELDS)
+  field!: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsUrl({}, { each: true })
+  imageUrls?: string[];
+
+  @IsOptional()
+  @IsString()
+  prompt?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  apply?: boolean;
+}
+
 @Controller('api/stores/:id/products')
 @UseGuards(JwtAuthGuard, StoreAccessGuard)
 export class ProductsController {
@@ -279,6 +330,15 @@ export class ProductsController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.productsService.create(storeId, dto, user);
+  }
+
+  @Post('ai/generate')
+  generateFromAi(
+    @Param('id') storeId: string,
+    @Body() dto: GenerateProductAiDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.productsService.generateAiFields(storeId, dto, user);
   }
 
   @Get()
@@ -318,6 +378,28 @@ export class ProductsController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.productsService.duplicate(storeId, productId, dto, user);
+  }
+
+  @Post(':productId/ai/regenerate-field')
+  regenerateAiField(
+    @Param('id') storeId: string,
+    @Param('productId') productId: string,
+    @Body() dto: RegenerateProductAiFieldDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.productsService.regenerateAiField(
+      storeId,
+      productId,
+      {
+        field: dto.field,
+        imageUrls: dto.imageUrls,
+        prompt: dto.prompt,
+        region: dto.region,
+        currency: dto.currency,
+        apply: dto.apply ?? false,
+      },
+      user,
+    );
   }
 
   @Post(':productId/variants')
