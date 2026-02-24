@@ -51,4 +51,71 @@ export class AnalyticsService {
       revenueApprox: row._sum.unitPrice ?? 0,
     }));
   }
+
+  async dashboard(storeId: string, from?: string, to?: string) {
+    const createdAt =
+      from || to
+        ? {
+            ...(from ? { gte: new Date(from) } : {}),
+            ...(to ? { lte: new Date(to) } : {}),
+          }
+        : undefined;
+    const orderWhere = createdAt ? { storeId, createdAt } : { storeId };
+
+    const [
+      orderStats,
+      totalOrders,
+      completedOrders,
+      customerCount,
+      activeProducts,
+      lowStockProducts,
+      lowStockVariants,
+    ] = await Promise.all([
+      this.prisma.order.aggregate({
+        where: orderWhere,
+        _sum: { total: true },
+        _avg: { total: true },
+      }),
+      this.prisma.order.count({ where: orderWhere }),
+      this.prisma.order.count({
+        where: {
+          ...orderWhere,
+          status: { in: ['paid', 'processing', 'shipped', 'delivered'] },
+        },
+      }),
+      this.prisma.order
+        .groupBy({
+          by: ['customerEmail'],
+          where: orderWhere,
+        })
+        .then((rows) => rows.length),
+      this.prisma.product.count({
+        where: { storeId, status: 'active' },
+      }),
+      this.prisma.product.count({
+        where: { storeId, status: 'active', stock: { lte: 5 } },
+      }),
+      this.prisma.productVariant.count({
+        where: {
+          stock: { lte: 5 },
+          product: { storeId, status: 'active' },
+        },
+      }),
+    ]);
+
+    const conversionRate =
+      totalOrders > 0 ? Number(((completedOrders / totalOrders) * 100).toFixed(2)) : 0;
+
+    return {
+      from: from ?? null,
+      to: to ?? null,
+      revenue: orderStats._sum.total ?? 0,
+      orders: totalOrders,
+      averageOrderValue: orderStats._avg.total ?? 0,
+      customers: customerCount,
+      products: activeProducts,
+      lowStockAlerts: lowStockProducts + lowStockVariants,
+      conversionRatePct: conversionRate,
+    };
+  }
 }

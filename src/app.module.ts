@@ -28,6 +28,9 @@ import { ShippingModule } from './shipping/shipping.module';
 import { CustomersModule } from './customers/customers.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { ComplianceModule } from './compliance/compliance.module';
 
 @Module({
   imports: [
@@ -62,6 +65,9 @@ import { NotificationsModule } from './notifications/notifications.module';
     CustomersModule,
     AnalyticsModule,
     NotificationsModule,
+    InventoryModule,
+    DashboardModule,
+    ComplianceModule,
   ],
   controllers: [AppController],
   providers: [

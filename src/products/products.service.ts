@@ -104,7 +104,7 @@ export class ProductsService {
   ) {
     const writeData = this.toCreateData(storeId, data);
     const product = await this.prisma.product.create({
-      data: writeData,
+      data: writeData as any,
     });
 
     await this.auditService.log({
@@ -119,11 +119,61 @@ export class ProductsService {
     return product;
   }
 
-  list(storeId: string) {
-    return this.prisma.product.findMany({
-      where: { storeId },
-      orderBy: { createdAt: 'desc' },
-    });
+  async list(
+    storeId: string,
+    options?: {
+      page?: number;
+      limit?: number;
+      q?: string;
+      status?: string;
+      from?: string;
+      to?: string;
+      sort?: string;
+    },
+  ) {
+    const page = Math.max(1, options?.page ?? 1);
+    const limit = Math.min(Math.max(options?.limit ?? 20, 1), 200);
+    const where: Prisma.ProductWhereInput = {
+      storeId,
+      ...(options?.q
+        ? {
+            OR: [
+              { title: { contains: options.q, mode: 'insensitive' } },
+              { description: { contains: options.q, mode: 'insensitive' } },
+              { sku: { contains: options.q, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+      ...(options?.status ? { status: options.status } : {}),
+      ...(options?.from || options?.to
+        ? {
+            createdAt: {
+              ...(options?.from ? { gte: new Date(options.from) } : {}),
+              ...(options?.to ? { lte: new Date(options.to) } : {}),
+            },
+          }
+        : {}),
+    };
+    const orderBy = this.productSort(options?.sort);
+    const skip = (page - 1) * limit;
+
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return {
+      items,
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
   }
 
   async findOne(storeId: string, productId: string) {
@@ -171,7 +221,7 @@ export class ProductsService {
 
     const updated = await this.prisma.product.update({
       where: { id: productId },
-      data: this.toUpdateData(data),
+      data: this.toUpdateData(data) as any,
     });
 
     await this.auditService.log({
@@ -216,10 +266,10 @@ export class ProductsService {
     data: { title?: string; status?: string },
     actor: { id: string; role: Role },
   ) {
-    const source = await this.prisma.product.findFirst({
+    const source = (await this.prisma.product.findFirst({
       where: { id: productId, storeId },
       include: { variants: true },
-    });
+    })) as any;
     if (!source) throw new NotFoundException('Product not found');
 
     const duplicated = await this.prisma.$transaction(async (tx) => {
@@ -250,16 +300,16 @@ export class ProductsService {
           featuresJson: source.featuresJson as Prisma.InputJsonValue | undefined,
           actionItemsJson:
             source.actionItemsJson as Prisma.InputJsonValue | undefined,
-        },
+        } as any,
       });
 
-      if (source.variants.length) {
-        await tx.productVariant.createMany({
-          data: source.variants.map((variant) => ({
-            productId: cloned.id,
-            optionName: variant.optionName,
-            optionValue: variant.optionValue,
-            sku: variant.sku,
+        if (source.variants.length) {
+          await tx.productVariant.createMany({
+            data: source.variants.map((variant: any) => ({
+              productId: cloned.id,
+              optionName: variant.optionName,
+              optionValue: variant.optionValue,
+              sku: variant.sku,
             price: variant.price,
             stock: variant.stock,
           })),
@@ -289,6 +339,39 @@ export class ProductsService {
     });
 
     return duplicated;
+  }
+
+  async updateDelivery(
+    storeId: string,
+    productId: string,
+    enabled: boolean,
+    actor: { id: string; role: Role },
+  ) {
+    await this.assertProductInStore(storeId, productId);
+    const key = `product_delivery:${storeId}:${productId}`;
+    const value = {
+      productId,
+      enabled,
+      updatedAt: new Date().toISOString(),
+      updatedBy: actor.id,
+    };
+
+    await this.prisma.platformSetting.upsert({
+      where: { key },
+      create: { key, valueJson: value as Prisma.InputJsonValue },
+      update: { valueJson: value as Prisma.InputJsonValue },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'product.delivery.update',
+      entityType: 'PlatformSetting',
+      entityId: key,
+      metaJson: { storeId, productId, enabled },
+    });
+
+    return value;
   }
 
   async generateAiFields(
@@ -356,7 +439,7 @@ export class ProductsService {
       imageUrls,
       region: data.region,
       currency: data.currency,
-      existingProduct: product,
+      existingProduct: product as any,
     });
 
     const field = data.field as ProductAiField;
@@ -395,7 +478,7 @@ export class ProductsService {
         const updateData = this.toRegeneratedFieldUpdate(field, value);
         const updated = await this.prisma.product.update({
           where: { id: productId },
-          data: updateData,
+          data: updateData as any,
         });
         applied = true;
         updatedProduct = updated as unknown as Record<string, unknown>;
@@ -568,7 +651,7 @@ export class ProductsService {
       features?: string[];
       actionItems?: string[];
     },
-  ): Prisma.ProductUncheckedCreateInput {
+  ): Record<string, unknown> {
     const title = data.title?.trim() || data.productName?.trim();
     if (!title) {
       throw new BadRequestException('title or productName is required');
@@ -642,8 +725,8 @@ export class ProductsService {
     tags?: string[];
     features?: string[];
     actionItems?: string[];
-  }): Prisma.ProductUncheckedUpdateInput {
-    const next: Prisma.ProductUncheckedUpdateInput = {};
+  }): Record<string, unknown> {
+    const next: Record<string, unknown> = {};
 
     const title = data.title?.trim() || data.productName?.trim();
     if (title) next.title = title;
@@ -694,7 +777,7 @@ export class ProductsService {
   private toRegeneratedFieldUpdate(
     field: Exclude<ProductAiField, 'variants'>,
     value: unknown,
-  ): Prisma.ProductUncheckedUpdateInput {
+  ): Record<string, unknown> {
     if (field === 'productName') {
       return { title: String(value ?? '').trim() };
     }
@@ -1220,5 +1303,17 @@ ${existingContext ? JSON.stringify(existingContext) : '(none)'}`;
       .replace(/^```\s*/i, '')
       .replace(/```\s*$/i, '')
       .trim();
+  }
+
+  private productSort(sort?: string): Prisma.ProductOrderByWithRelationInput {
+    const key = String(sort ?? 'createdAt_desc').trim().toLowerCase();
+    if (key === 'createdat_asc') return { createdAt: 'asc' };
+    if (key === 'price_desc') return { price: 'desc' };
+    if (key === 'price_asc') return { price: 'asc' };
+    if (key === 'stock_desc') return { stock: 'desc' };
+    if (key === 'stock_asc') return { stock: 'asc' };
+    if (key === 'title_asc') return { title: 'asc' };
+    if (key === 'title_desc') return { title: 'desc' };
+    return { createdAt: 'desc' };
   }
 }

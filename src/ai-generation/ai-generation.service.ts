@@ -6,7 +6,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AiJobStatus, Prisma, Role } from '@prisma/client';
+import { AiJobStatus, Prisma, Role, StoreStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { AuditService } from '../common/audit.service';
@@ -100,8 +100,31 @@ export class AiGenerationService implements OnModuleInit {
     }
 
     const parsed = aiResultSchema.parse(job.resultJson);
+    const historyId = randomUUID();
 
     const result = await this.prisma.$transaction(async (tx) => {
+      const [storeBefore, themeBefore, contentBefore] = await Promise.all([
+        tx.store.findUnique({
+          where: { id: storeId },
+          select: {
+            status: true,
+            themePreset: true,
+            publishedAt: true,
+          },
+        }),
+        tx.themeConfig.findUnique({
+          where: { storeId },
+          select: { preset: true, customJson: true },
+        }),
+        tx.platformSetting.findUnique({
+          where: { key: `store_content:${storeId}` },
+          select: { valueJson: true },
+        }),
+      ]);
+      if (!storeBefore) {
+        throw new NotFoundException('Store not found');
+      }
+
       const themeConfig = await tx.themeConfig.upsert({
         where: { storeId },
         create: {
@@ -172,10 +195,52 @@ export class AiGenerationService implements OnModuleInit {
         },
       });
 
+      await tx.platformSetting.create({
+        data: {
+          key: `ai_history:${storeId}:${historyId}`,
+          valueJson: {
+            id: historyId,
+            storeId,
+            jobId: job.id,
+            createdAt: new Date().toISOString(),
+            appliedBy: actor.id,
+            replaceProducts: options.replaceProducts,
+            themeBefore: themeBefore
+              ? {
+                  preset: themeBefore.preset,
+                  customJson: themeBefore.customJson,
+                }
+              : null,
+            contentBefore: contentBefore?.valueJson ?? null,
+            contentBeforeExists: Boolean(contentBefore),
+            storeBefore: {
+              status: storeBefore.status,
+              themePreset: storeBefore.themePreset,
+              publishedAt: storeBefore.publishedAt
+                ? storeBefore.publishedAt.toISOString()
+                : null,
+            },
+            themeAfter: {
+              preset: themeConfig.preset,
+              customJson: themeConfig.customJson,
+            },
+            contentAfter: {
+              hero: parsed.hero,
+              sections: parsed.sections,
+              sourceJobId: job.id,
+            },
+            revertedAt: null,
+            revertedBy: null,
+            revertReason: null,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
       return {
         themeConfig,
         createdProductsCount: createdProducts.length,
         sections: parsed.sections,
+        historyId,
       };
     });
 
@@ -196,6 +261,327 @@ export class AiGenerationService implements OnModuleInit {
       jobId: job.id,
       applied: true,
       ...result,
+    };
+  }
+
+  async history(storeId: string) {
+    const rows = await this.prisma.platformSetting.findMany({
+      where: { key: { startsWith: `ai_history:${storeId}:` } },
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+    });
+
+    return rows.map((row) => {
+      const payload = this.asRecord(row.valueJson);
+      return {
+        id: this.asString(payload.id, row.key.replace(`ai_history:${storeId}:`, '')),
+        storeId,
+        jobId: this.asString(payload.jobId, ''),
+        createdAt: this.asString(payload.createdAt, row.updatedAt.toISOString()),
+        appliedBy: this.asString(payload.appliedBy, 'unknown'),
+        replaceProducts: this.asBoolean(payload.replaceProducts, false),
+        reverted: Boolean(payload.revertedAt),
+        revertedAt: this.asString(payload.revertedAt, ''),
+        revertReason: this.asString(payload.revertReason, ''),
+      };
+    });
+  }
+
+  async undoLatest(
+    storeId: string,
+    actor: { id: string; role: Role },
+    reason?: string,
+  ) {
+    const rows = await this.prisma.platformSetting.findMany({
+      where: { key: { startsWith: `ai_history:${storeId}:` } },
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+    });
+    const row = rows.find((item) => {
+      const payload = this.asRecord(item.valueJson);
+      return !payload.revertedAt;
+    });
+    if (!row) {
+      throw new NotFoundException('No undo history found');
+    }
+    const historyId = row.key.replace(`ai_history:${storeId}:`, '');
+    return this.revertHistory(storeId, historyId, actor, reason ?? 'undo_latest');
+  }
+
+  async revertHistory(
+    storeId: string,
+    historyId: string,
+    actor: { id: string; role: Role },
+    reason?: string,
+  ) {
+    const key = `ai_history:${storeId}:${historyId}`;
+    const row = await this.prisma.platformSetting.findUnique({ where: { key } });
+    if (!row) throw new NotFoundException('History item not found');
+
+    const payload = this.asRecord(row.valueJson);
+    const storeBefore = this.asRecord(payload.storeBefore as Prisma.JsonValue);
+    const themeBeforeRaw = payload.themeBefore;
+    const contentBeforeExists = this.asBoolean(payload.contentBeforeExists, false);
+    const contentBefore = payload.contentBefore as Prisma.JsonValue | null;
+
+    await this.prisma.$transaction(async (tx) => {
+      if (themeBeforeRaw && typeof themeBeforeRaw === 'object') {
+        const themeBefore = this.asRecord(themeBeforeRaw as Prisma.JsonValue);
+        await tx.themeConfig.upsert({
+          where: { storeId },
+          create: {
+            storeId,
+            preset: this.nullableString(themeBefore.preset),
+            customJson: this.asJsonValue(themeBefore.customJson),
+          },
+          update: {
+            preset: this.nullableString(themeBefore.preset),
+            customJson: this.asJsonValue(themeBefore.customJson),
+          },
+        });
+      } else {
+        await tx.themeConfig.deleteMany({ where: { storeId } });
+      }
+
+      if (contentBeforeExists) {
+        await tx.platformSetting.upsert({
+          where: { key: `store_content:${storeId}` },
+          create: {
+            key: `store_content:${storeId}`,
+            valueJson: this.asJsonValue(contentBefore),
+          },
+          update: {
+            valueJson: this.asJsonValue(contentBefore),
+          },
+        });
+      } else {
+        await tx.platformSetting.deleteMany({
+          where: { key: `store_content:${storeId}` },
+        });
+      }
+
+      await tx.store.update({
+        where: { id: storeId },
+        data: {
+          status: this.toStoreStatus(storeBefore.status),
+          themePreset: this.nullableString(storeBefore.themePreset),
+          publishedAt: this.nullableDate(storeBefore.publishedAt),
+        },
+      });
+
+      const nextPayload = {
+        ...payload,
+        revertedAt: new Date().toISOString(),
+        revertedBy: actor.id,
+        revertReason: reason ?? null,
+      };
+      await tx.platformSetting.update({
+        where: { key },
+        data: { valueJson: nextPayload as Prisma.InputJsonValue },
+      });
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'ai.history.revert',
+      entityType: 'PlatformSetting',
+      entityId: key,
+      metaJson: { storeId, historyId },
+    });
+
+    return {
+      storeId,
+      historyId,
+      reverted: true,
+      revertedAt: new Date().toISOString(),
+    };
+  }
+
+  async applySectionPrompt(
+    storeId: string,
+    data: { section: string; prompt: string; dryRun?: boolean },
+    actor: { id: string; role: Role },
+  ) {
+    const section = data.section.trim().toLowerCase();
+    const prompt = data.prompt.trim();
+    if (!section) {
+      throw new BadRequestException('section is required');
+    }
+    if (!prompt) {
+      throw new BadRequestException('prompt is required');
+    }
+
+    const contentKey = `store_content:${storeId}`;
+    const contentRow = await this.prisma.platformSetting.findUnique({
+      where: { key: contentKey },
+    });
+
+    const current = this.asRecord(contentRow?.valueJson);
+    const patch = this.generateSectionPatch(section, prompt, current);
+    const preview = this.applySectionPatch(current, patch);
+    const dryRun = data.dryRun ?? false;
+
+    if (dryRun) {
+      return {
+        section,
+        prompt,
+        dryRun: true,
+        persisted: false,
+        historyId: null,
+        patch,
+        preview,
+      };
+    }
+
+    const historyId = randomUUID();
+    const historyKey = `ai_section_history:${storeId}:${historyId}`;
+    const nowIso = new Date().toISOString();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.platformSetting.upsert({
+        where: { key: contentKey },
+        create: {
+          key: contentKey,
+          valueJson: preview as Prisma.InputJsonValue,
+        },
+        update: {
+          valueJson: preview as Prisma.InputJsonValue,
+        },
+      });
+
+      await tx.platformSetting.create({
+        data: {
+          key: historyKey,
+          valueJson: {
+            id: historyId,
+            storeId,
+            section,
+            prompt,
+            dryRun: false,
+            createdAt: nowIso,
+            appliedBy: actor.id,
+            beforeExists: Boolean(contentRow),
+            before: contentRow?.valueJson ?? null,
+            patch,
+            after: preview,
+            revertedAt: null,
+            revertedBy: null,
+            revertReason: null,
+          } as Prisma.InputJsonValue,
+        },
+      });
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'ai.sections.apply',
+      entityType: 'PlatformSetting',
+      entityId: historyKey,
+      metaJson: { storeId, section },
+    });
+
+    return {
+      section,
+      prompt,
+      dryRun: false,
+      persisted: true,
+      historyId,
+      patch,
+      preview,
+    };
+  }
+
+  async sectionHistory(storeId: string) {
+    const rows = await this.prisma.platformSetting.findMany({
+      where: { key: { startsWith: `ai_section_history:${storeId}:` } },
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+    });
+
+    return rows.map((row) => {
+      const payload = this.asRecord(row.valueJson);
+      return {
+        id: this.asString(
+          payload.id,
+          row.key.replace(`ai_section_history:${storeId}:`, ''),
+        ),
+        storeId,
+        section: this.asString(payload.section, 'unknown'),
+        prompt: this.asString(payload.prompt, ''),
+        createdAt: this.asString(payload.createdAt, row.updatedAt.toISOString()),
+        appliedBy: this.asString(payload.appliedBy, 'unknown'),
+        reverted: Boolean(payload.revertedAt),
+        revertedAt: this.asString(payload.revertedAt, ''),
+        revertReason: this.asString(payload.revertReason, ''),
+        patch: this.asRecord(payload.patch as Prisma.JsonValue | undefined),
+        preview: this.asRecord(payload.after as Prisma.JsonValue | undefined),
+      };
+    });
+  }
+
+  async revertSectionHistory(
+    storeId: string,
+    historyId: string,
+    actor: { id: string; role: Role },
+    reason?: string,
+  ) {
+    const key = `ai_section_history:${storeId}:${historyId}`;
+    const row = await this.prisma.platformSetting.findUnique({ where: { key } });
+    if (!row) throw new NotFoundException('Section history item not found');
+
+    const payload = this.asRecord(row.valueJson);
+    const contentKey = `store_content:${storeId}`;
+    const beforeExists = this.asBoolean(payload.beforeExists, false);
+    const before = payload.before as Prisma.JsonValue | undefined;
+    const nowIso = new Date().toISOString();
+
+    await this.prisma.$transaction(async (tx) => {
+      if (beforeExists) {
+        await tx.platformSetting.upsert({
+          where: { key: contentKey },
+          create: {
+            key: contentKey,
+            valueJson: this.asJsonValue(before),
+          },
+          update: {
+            valueJson: this.asJsonValue(before),
+          },
+        });
+      } else {
+        await tx.platformSetting.deleteMany({
+          where: { key: contentKey },
+        });
+      }
+
+      await tx.platformSetting.update({
+        where: { key },
+        data: {
+          valueJson: {
+            ...payload,
+            revertedAt: nowIso,
+            revertedBy: actor.id,
+            revertReason: reason ?? null,
+          } as Prisma.InputJsonValue,
+        },
+      });
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'ai.sections.history.revert',
+      entityType: 'PlatformSetting',
+      entityId: key,
+      metaJson: { storeId, historyId },
+    });
+
+    return {
+      storeId,
+      historyId,
+      reverted: true,
+      revertedAt: nowIso,
     };
   }
 
@@ -415,5 +801,128 @@ export class AiGenerationService implements OnModuleInit {
       .replace(/^```\s*/i, '')
       .replace(/```\s*$/i, '')
       .trim();
+  }
+
+  private generateSectionPatch(
+    section: string,
+    prompt: string,
+    current: Record<string, unknown>,
+  ) {
+    const sectionState = this.asRecord(
+      current[section] as Prisma.JsonValue | undefined,
+    );
+    const nowIso = new Date().toISOString();
+    const inferredTitle = this.extractQuotedValue(prompt);
+
+    if (section === 'hero') {
+      return {
+        hero: {
+          ...sectionState,
+          title:
+            inferredTitle ||
+            this.asString(sectionState.title, '') ||
+            prompt.slice(0, 120),
+          aiPrompt: prompt,
+          updatedAt: nowIso,
+        },
+      };
+    }
+
+    return {
+      [section]: {
+        ...sectionState,
+        aiPrompt: prompt,
+        aiSummary: inferredTitle ?? prompt,
+        updatedAt: nowIso,
+      },
+    };
+  }
+
+  private applySectionPatch(
+    current: Record<string, unknown>,
+    patch: Record<string, unknown>,
+  ) {
+    const next: Record<string, unknown> = { ...current };
+
+    for (const [key, value] of Object.entries(patch)) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        const existing = this.asRecord(
+          current[key] as Prisma.JsonValue | undefined,
+        );
+        next[key] = {
+          ...existing,
+          ...(value as Record<string, unknown>),
+        };
+      } else {
+        next[key] = value;
+      }
+    }
+
+    return next;
+  }
+
+  private extractQuotedValue(prompt: string) {
+    const match =
+      prompt.match(/"([^"]+)"/) ??
+      prompt.match(/'([^']+)'/) ??
+      prompt.match(/`([^`]+)`/);
+    return match?.[1]?.trim() || null;
+  }
+
+  private asRecord(
+    value: Prisma.JsonValue | null | undefined,
+  ): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private asString(value: unknown, fallback: string) {
+    if (typeof value !== 'string') return fallback;
+    const next = value.trim();
+    return next || fallback;
+  }
+
+  private asBoolean(value: unknown, fallback: boolean) {
+    if (typeof value === 'boolean') return value;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return fallback;
+  }
+
+  private nullableString(value: unknown): string | null {
+    if (value == null) return null;
+    if (typeof value !== 'string') return null;
+    const next = value.trim();
+    return next || null;
+  }
+
+  private nullableDate(value: unknown): Date | null {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value !== 'string') return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private asJsonValue(value: unknown): Prisma.InputJsonValue {
+    if (value === undefined) {
+      return {} as Prisma.InputJsonValue;
+    }
+    if (value === null) {
+      return Prisma.JsonNull as unknown as Prisma.InputJsonValue;
+    }
+    return value as Prisma.InputJsonValue;
+  }
+
+  private toStoreStatus(value: unknown): StoreStatus {
+    const raw = String(value ?? '')
+      .trim()
+      .toLowerCase();
+    if (raw === 'active') return StoreStatus.active;
+    if (raw === 'suspended') return StoreStatus.suspended;
+    if (raw === 'archived') return StoreStatus.archived;
+    return StoreStatus.draft;
   }
 }

@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -28,6 +35,36 @@ class SavePromptDto {
   @IsOptional()
   @IsString()
   title?: string;
+}
+
+class UndoAiChangeDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+class RevertAiChangeDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+class ApplySectionPromptDto {
+  @IsString()
+  section!: string;
+
+  @IsString()
+  prompt!: string;
+
+  @IsOptional()
+  @IsBoolean()
+  dryRun?: boolean;
+}
+
+class RevertSectionHistoryDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }
 
 @Controller('api/stores/:id/ai')
@@ -92,5 +129,71 @@ export class AiGenerationController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.aiGenerationService.replayPrompt(storeId, promptId, user);
+  }
+
+  @Get('history')
+  history(@Param('id') storeId: string) {
+    return this.aiGenerationService.history(storeId);
+  }
+
+  @Post('history/undo')
+  undoLatest(
+    @Param('id') storeId: string,
+    @CurrentUser() user: RequestUser,
+    @Body() dto: UndoAiChangeDto,
+  ) {
+    return this.aiGenerationService.undoLatest(storeId, user, dto.reason);
+  }
+
+  @Post('history/:historyId/revert')
+  revertHistory(
+    @Param('id') storeId: string,
+    @Param('historyId') historyId: string,
+    @CurrentUser() user: RequestUser,
+    @Body() dto: RevertAiChangeDto,
+  ) {
+    return this.aiGenerationService.revertHistory(
+      storeId,
+      historyId,
+      user,
+      dto.reason,
+    );
+  }
+
+  @Post('sections/apply')
+  applySectionPrompt(
+    @Param('id') storeId: string,
+    @Body() dto: ApplySectionPromptDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.aiGenerationService.applySectionPrompt(
+      storeId,
+      {
+        section: dto.section,
+        prompt: dto.prompt,
+        dryRun: dto.dryRun ?? false,
+      },
+      user,
+    );
+  }
+
+  @Get('sections/history')
+  sectionHistory(@Param('id') storeId: string) {
+    return this.aiGenerationService.sectionHistory(storeId);
+  }
+
+  @Post('sections/history/:historyId/revert')
+  revertSectionHistory(
+    @Param('id') storeId: string,
+    @Param('historyId') historyId: string,
+    @CurrentUser() user: RequestUser,
+    @Body() dto: RevertSectionHistoryDto,
+  ) {
+    return this.aiGenerationService.revertSectionHistory(
+      storeId,
+      historyId,
+      user,
+      dto.reason,
+    );
   }
 }

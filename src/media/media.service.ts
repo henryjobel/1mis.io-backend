@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, Role } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { createHmac, randomUUID } from 'crypto';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -60,33 +60,41 @@ export class MediaService {
       'https://cdn.example.com';
     const uploadUrl = `${this.trimTrailingSlash(uploadBaseUrl)}/${key}?uploadId=${uploadId}`;
     const publicUrl = `${this.trimTrailingSlash(publicBaseUrl)}/${key}`;
+    const thumbnailUrl = this.buildThumbnailUrl(publicUrl);
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    const expiresAtIso = expiresAt.toISOString();
     const settingKey = `media_upload:${storeId}:${uploadId}`;
+    const signature = this.buildUploadSignature({
+      uploadId,
+      key,
+      mimeType: normalizedMimeType,
+      sizeBytes: data.sizeBytes,
+      expiresAtIso,
+    });
+    const sessionPayload = {
+      type: data.type,
+      key,
+      url: publicUrl,
+      thumbnailUrl,
+      altText: data.altText ?? null,
+      mimeType: normalizedMimeType,
+      sizeBytes: data.sizeBytes,
+      expiresAt: expiresAtIso,
+      status: 'pending',
+      signature,
+      assetId: null,
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+    };
 
     await this.prisma.platformSetting.upsert({
       where: { key: settingKey },
       create: {
         key: settingKey,
-        valueJson: {
-          type: data.type,
-          key,
-          url: publicUrl,
-          altText: data.altText ?? null,
-          mimeType: normalizedMimeType,
-          sizeBytes: data.sizeBytes,
-          expiresAt: expiresAt.toISOString(),
-        } as Prisma.InputJsonValue,
+        valueJson: sessionPayload as Prisma.InputJsonValue,
       },
       update: {
-        valueJson: {
-          type: data.type,
-          key,
-          url: publicUrl,
-          altText: data.altText ?? null,
-          mimeType: normalizedMimeType,
-          sizeBytes: data.sizeBytes,
-          expiresAt: expiresAt.toISOString(),
-        } as Prisma.InputJsonValue,
+        valueJson: sessionPayload as Prisma.InputJsonValue,
       },
     });
 
@@ -106,13 +114,50 @@ export class MediaService {
     return {
       uploadId,
       key,
+      method: 'PUT',
       uploadUrl,
       publicUrl,
-      expiresAt: expiresAt.toISOString(),
+      thumbnailUrl,
+      expiresAt: expiresAtIso,
+      signature,
+      headers: {
+        'content-type': normalizedMimeType,
+      },
+      statusUrl: `/api/stores/${storeId}/media/uploads/${uploadId}/status`,
       constraints: {
         maxSizeBytes: MAX_IMAGE_BYTES,
         allowedMimeTypes: ALLOWED_IMAGE_MIME_TYPES,
       },
+    };
+  }
+
+  async uploadStatus(storeId: string, uploadId: string) {
+    const key = `media_upload:${storeId}:${uploadId}`;
+    const row = await this.prisma.platformSetting.findUnique({
+      where: { key },
+    });
+    if (!row) throw new NotFoundException('Upload session not found');
+
+    const payload = this.readUploadSession(row.valueJson);
+    const now = new Date();
+    const expired =
+      payload.status === 'pending' &&
+      payload.expiresAt &&
+      new Date(payload.expiresAt) <= now;
+    const status = expired ? 'expired' : payload.status;
+
+    return {
+      uploadId,
+      status,
+      key: payload.key,
+      mimeType: payload.mimeType,
+      sizeBytes: payload.sizeBytes,
+      url: payload.url,
+      thumbnailUrl: payload.thumbnailUrl,
+      assetId: payload.assetId,
+      createdAt: payload.createdAt,
+      completedAt: payload.completedAt,
+      expiresAt: payload.expiresAt ?? null,
     };
   }
 
@@ -149,23 +194,45 @@ export class MediaService {
     if (!row) throw new NotFoundException('Upload session not found');
 
     const payload = this.readUploadSession(row.valueJson);
+    if (payload.status === 'completed' && payload.assetId) {
+      const existingAsset = await this.prisma.mediaAsset.findFirst({
+        where: { id: payload.assetId, storeId },
+      });
+      if (existingAsset) {
+        return existingAsset;
+      }
+    }
+
     const now = new Date();
     if (payload.expiresAt && new Date(payload.expiresAt) <= now) {
       throw new BadRequestException('Upload session expired');
     }
+    const finalUrl = data.url?.trim() || payload.url;
+    const completedAt = new Date().toISOString();
+    const mergedAltText = data.altText ?? payload.altText;
 
     const asset = await this.prisma.$transaction(async (tx) => {
       const created = await tx.mediaAsset.create({
         data: {
           storeId,
           type: payload.type ?? 'image',
-          url: data.url?.trim() || payload.url,
-          altText: data.altText ?? payload.altText,
+          url: finalUrl,
+          altText: mergedAltText,
         },
       });
 
-      await tx.platformSetting.delete({
+      await tx.platformSetting.update({
         where: { key: settingKey },
+        data: {
+          valueJson: {
+            ...payload,
+            status: 'completed',
+            url: finalUrl,
+            altText: mergedAltText ?? null,
+            assetId: created.id,
+            completedAt,
+          } as Prisma.InputJsonValue,
+        },
       });
 
       return created;
@@ -227,6 +294,30 @@ export class MediaService {
     return value.endsWith('/') ? value.slice(0, -1) : value;
   }
 
+  private buildThumbnailUrl(publicUrl: string) {
+    return `${publicUrl}?w=320&fit=cover&auto=format`;
+  }
+
+  private buildUploadSignature(input: {
+    uploadId: string;
+    key: string;
+    mimeType: string;
+    sizeBytes: number;
+    expiresAtIso: string;
+  }) {
+    const secret =
+      this.configService.get<string>('MEDIA_UPLOAD_SIGNING_KEY') ??
+      'dev-media-signing-key';
+    const payload = [
+      input.uploadId,
+      input.key,
+      input.mimeType,
+      input.sizeBytes,
+      input.expiresAtIso,
+    ].join('|');
+    return createHmac('sha256', secret).update(payload).digest('hex');
+  }
+
   private readUploadSession(value: Prisma.JsonValue) {
     if (
       !value ||
@@ -238,8 +329,17 @@ export class MediaService {
     }
     const payload = value as {
       type?: unknown;
+      key?: unknown;
       url?: unknown;
+      thumbnailUrl?: unknown;
       altText?: unknown;
+      mimeType?: unknown;
+      sizeBytes?: unknown;
+      status?: unknown;
+      signature?: unknown;
+      assetId?: unknown;
+      createdAt?: unknown;
+      completedAt?: unknown;
       expiresAt?: unknown;
     };
     if (!payload.url || typeof payload.url !== 'string') {
@@ -247,8 +347,26 @@ export class MediaService {
     }
     return {
       type: typeof payload.type === 'string' ? payload.type : null,
+      key: typeof payload.key === 'string' ? payload.key : '',
       url: payload.url,
+      thumbnailUrl:
+        typeof payload.thumbnailUrl === 'string' ? payload.thumbnailUrl : null,
       altText: typeof payload.altText === 'string' ? payload.altText : null,
+      mimeType: typeof payload.mimeType === 'string' ? payload.mimeType : null,
+      sizeBytes:
+        typeof payload.sizeBytes === 'number' ? payload.sizeBytes : undefined,
+      status:
+        payload.status === 'completed' ||
+        payload.status === 'failed' ||
+        payload.status === 'expired'
+          ? payload.status
+          : 'pending',
+      signature:
+        typeof payload.signature === 'string' ? payload.signature : undefined,
+      assetId: typeof payload.assetId === 'string' ? payload.assetId : null,
+      createdAt: typeof payload.createdAt === 'string' ? payload.createdAt : null,
+      completedAt:
+        typeof payload.completedAt === 'string' ? payload.completedAt : null,
       expiresAt:
         typeof payload.expiresAt === 'string' ? payload.expiresAt : undefined,
     };

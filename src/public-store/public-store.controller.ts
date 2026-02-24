@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import {
   IsEmail,
+  IsIn,
   IsInt,
   IsObject,
   IsOptional,
@@ -65,6 +66,14 @@ class CheckoutDto {
   @IsOptional()
   @IsObject()
   shippingAddress?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsIn(['cod', 'stripe', 'sslcommerz'])
+  paymentMethod?: 'cod' | 'stripe' | 'sslcommerz';
+
+  @IsOptional()
+  @IsObject()
+  paymentMeta?: Record<string, unknown>;
 }
 
 class CreateReviewDto {
@@ -188,5 +197,19 @@ export class PublicStoreController {
   @Post('checkout')
   checkout(@Param('slug') slug: string, @Body() dto: CheckoutDto) {
     return this.publicStoreService.checkout(slug, dto);
+  }
+
+  @Get('orders/:orderCode')
+  order(
+    @Param('slug') slug: string,
+    @Param('orderCode') orderCode: string,
+    @Query('email') email?: string,
+  ) {
+    return this.publicStoreService.order(slug, orderCode, email);
+  }
+
+  @Get('policies')
+  policies(@Param('slug') slug: string) {
+    return this.publicStoreService.policies(slug);
   }
 }

@@ -21,4 +21,13 @@ export class AnalyticsController {
   topProducts(@Param('id') storeId: string) {
     return this.analyticsService.topProducts(storeId);
   }
+
+  @Get('dashboard')
+  dashboard(
+    @Param('id') storeId: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.analyticsService.dashboard(storeId, from, to);
+  }
 }

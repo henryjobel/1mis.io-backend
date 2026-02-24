@@ -157,11 +157,10 @@ export class SuperAdminService {
       owner = await this.prisma.user.create({
         data: {
           name,
-          businessName: name,
           email: ownerEmail,
           passwordHash: 'invite-pending',
           role: Role.owner,
-        },
+        } as any,
       });
     }
 
@@ -945,6 +944,167 @@ export class SuperAdminService {
     return this.ticket(id);
   }
 
+  async securityIncidents() {
+    const rows = await this.prisma.platformSetting.findMany({
+      where: { key: { startsWith: 'incident:' } },
+      orderBy: { updatedAt: 'desc' },
+      take: 200,
+    });
+
+    return rows.map((row) =>
+      this.toIncidentRecord(row.key, this.asRecord(row.valueJson), row.updatedAt),
+    );
+  }
+
+  async createSecurityIncident(
+    payload: {
+      title: string;
+      level: 'info' | 'warning' | 'critical';
+      status?: 'monitoring' | 'resolved';
+      startedAt?: string;
+      note?: string;
+      resolutionNote?: string;
+    },
+    actor: { id: string; role: Role },
+  ) {
+    const title = payload.title.trim();
+    if (!title) {
+      throw new BadRequestException('Incident title is required');
+    }
+
+    const incidentId = `INC-${Date.now().toString(36).toUpperCase()}`;
+    const key = `incident:${incidentId}`;
+    const now = new Date().toISOString();
+    const status = payload.status
+      ? this.normalizeIncidentStatus(payload.status)
+      : 'monitoring';
+    const startedAt = this.asString(payload.startedAt, now);
+    const resolutionNote = this.asString(
+      payload.resolutionNote,
+      this.asString(payload.note, ''),
+    );
+
+    const created = await this.prisma.platformSetting.create({
+      data: {
+        key,
+        valueJson: {
+          id: incidentId,
+          title,
+          level: this.normalizeIncidentLevel(payload.level),
+          status,
+          startedAt,
+          note: payload.note ?? '',
+          resolutionNote:
+            status === 'resolved'
+              ? resolutionNote || this.asString(payload.note, '')
+              : '',
+          createdAt: now,
+          createdBy: actor.id,
+          resolvedAt: status === 'resolved' ? now : null,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.security.incident.create',
+      entityType: 'PlatformSetting',
+      entityId: key,
+      metaJson: { incidentId, level: payload.level, status },
+    });
+
+    return this.toIncidentRecord(
+      created.key,
+      this.asRecord(created.valueJson),
+      created.updatedAt,
+    );
+  }
+
+  async updateSecurityIncident(
+    id: string,
+      payload: {
+        title?: string;
+        level?: 'info' | 'warning' | 'critical';
+        status?: 'monitoring' | 'resolved';
+        note?: string;
+        resolutionNote?: string;
+      },
+      actor: { id: string; role: Role },
+  ) {
+    const key = `incident:${id}`;
+    const existing = await this.prisma.platformSetting.findUnique({
+      where: { key },
+    });
+    if (!existing) {
+      throw new NotFoundException('Incident not found');
+    }
+
+    const current = this.asRecord(existing.valueJson);
+    const nextStatus = payload.status
+      ? this.normalizeIncidentStatus(payload.status)
+      : this.normalizeIncidentStatus(current.status);
+    const now = new Date().toISOString();
+    const next = {
+      ...current,
+      ...(payload.title !== undefined
+        ? { title: this.asString(payload.title, this.asString(current.title, '')) }
+        : {}),
+      ...(payload.level !== undefined
+        ? { level: this.normalizeIncidentLevel(payload.level) }
+        : {}),
+      ...(payload.note !== undefined ? { note: payload.note } : {}),
+      ...(payload.resolutionNote !== undefined
+        ? { resolutionNote: payload.resolutionNote }
+        : {}),
+      status: nextStatus,
+      updatedAt: now,
+      updatedBy: actor.id,
+      resolvedAt:
+        nextStatus === 'resolved'
+          ? this.asString(current.resolvedAt, now)
+          : null,
+      resolutionNote:
+        nextStatus === 'resolved'
+          ? this.asString(
+              payload.resolutionNote,
+              this.asString(payload.note, this.asString(current.resolutionNote, '')),
+            )
+          : this.asString(current.resolutionNote, ''),
+    };
+
+    const updated = await this.prisma.platformSetting.update({
+      where: { key },
+      data: { valueJson: next as Prisma.InputJsonValue },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.security.incident.update',
+      entityType: 'PlatformSetting',
+      entityId: key,
+      metaJson: {
+        id,
+        status: nextStatus,
+        level: payload.level,
+      },
+    });
+
+    return this.toIncidentRecord(
+      updated.key,
+      this.asRecord(updated.valueJson),
+      updated.updatedAt,
+    );
+  }
+
+  async securityIncident(id: string) {
+    const key = `incident:${id}`;
+    const row = await this.prisma.platformSetting.findUnique({ where: { key } });
+    if (!row) throw new NotFoundException('Incident not found');
+    return this.toIncidentRecord(key, this.asRecord(row.valueJson), row.updatedAt);
+  }
+
   health() {
     return {
       status: 'healthy',
@@ -1046,11 +1206,32 @@ export class SuperAdminService {
     return flag;
   }
 
-  auditLogs() {
-    return this.prisma.auditLog.findMany({
+  async auditLogs(format?: 'dashboard') {
+    const rows = await this.prisma.auditLog.findMany({
       orderBy: { createdAt: 'desc' },
       take: 100,
+      include: {
+        actor: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
     });
+
+    if (format === 'dashboard') {
+      return rows.map((row) => ({
+        id: row.id,
+        actor: row.actor?.name || row.actor?.email || 'system',
+        action: row.action,
+        target: `${row.entityType}:${row.entityId}`,
+        risk: this.riskFromAction(row.action),
+        at: row.createdAt.toISOString(),
+      }));
+    }
+
+    return rows;
   }
 
   settings() {
@@ -1221,6 +1402,45 @@ export class SuperAdminService {
     };
   }
 
+  private toIncidentRecord(
+    key: string,
+    payload: Record<string, unknown>,
+    updatedAt: Date,
+  ) {
+    return {
+      id: this.asString(payload.id, key.replace('incident:', '')),
+      title: this.asString(payload.title, 'Untitled incident'),
+      level: this.normalizeIncidentLevel(payload.level),
+      startedAt: this.asString(payload.startedAt, updatedAt.toISOString()),
+      status: this.normalizeIncidentStatus(payload.status),
+      note: this.asString(payload.note, ''),
+      resolutionNote: this.asString(payload.resolutionNote, ''),
+      resolvedAt: this.asString(payload.resolvedAt, ''),
+      updatedAt: updatedAt.toISOString(),
+    };
+  }
+
+  private riskFromAction(action: string): 'low' | 'medium' | 'high' {
+    const raw = action.trim().toLowerCase();
+    if (
+      raw.includes('delete') ||
+      raw.includes('reset') ||
+      raw.includes('security') ||
+      raw.includes('password')
+    ) {
+      return 'high';
+    }
+    if (
+      raw.includes('update') ||
+      raw.includes('status') ||
+      raw.includes('retry') ||
+      raw.includes('cancel')
+    ) {
+      return 'medium';
+    }
+    return 'low';
+  }
+
   private normalizeTicketCategory(value: unknown) {
     const raw = String(value ?? '').trim().toLowerCase();
     if (raw === 'payment') return 'payment';
@@ -1241,6 +1461,19 @@ export class SuperAdminService {
     if (raw === 'in_progress') return 'in_progress';
     if (raw === 'resolved') return 'resolved';
     return 'open';
+  }
+
+  private normalizeIncidentLevel(value: unknown) {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (raw === 'info') return 'info';
+    if (raw === 'critical') return 'critical';
+    return 'warning';
+  }
+
+  private normalizeIncidentStatus(value: unknown) {
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (raw === 'resolved') return 'resolved';
+    return 'monitoring';
   }
 
   private asRecord(value: Prisma.JsonValue | null | undefined) {

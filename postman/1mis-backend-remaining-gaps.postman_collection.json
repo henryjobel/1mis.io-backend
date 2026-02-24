@@ -1,0 +1,238 @@
+{
+  "info": {
+    "name": "1mis Backend Remaining APIs",
+    "_postman_id": "8d6f07f9-f57e-44ba-9f7b-1mis-remaining-apis",
+    "description": "Supplementary collection for owner-flow and super-admin contract completion APIs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "storeId", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "sectionHistoryId", "value": "" },
+    { "key": "incidentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Owner - Dashboard Overview",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/dashboard/overview"
+      }
+    },
+    {
+      "name": "Owner - Shipping Config (Methods + Charges + Rates)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"methods\": {\n    \"standard\": true,\n    \"express\": true,\n    \"pickup\": true,\n    \"cod\": true\n  },\n  \"charges\": {\n    \"flatCharge\": 60,\n    \"expressCharge\": 120\n  },\n  \"rates\": [\n    { \"name\": \"Inside Dhaka\", \"country\": \"BD\", \"amount\": 60 },\n    { \"name\": \"Outside Dhaka\", \"country\": \"BD\", \"amount\": 120 }\n  ]\n}"
+        },
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/shipping/config"
+      }
+    },
+    {
+      "name": "Owner - Shipping Orders (Merged Delivery View)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/shipping/orders?page=1&limit=20&q=&status=completed&sort=createdAt_desc"
+      }
+    },
+    {
+      "name": "Owner - Product Delivery Toggle",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"enabled\": true\n}"
+        },
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/products/{{productId}}/delivery"
+      }
+    },
+    {
+      "name": "Owner - AI Section Apply (Dry Run)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"section\": \"hero\",\n  \"prompt\": \"Make hero headline premium and modern\",\n  \"dryRun\": true\n}"
+        },
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/ai/sections/apply"
+      }
+    },
+    {
+      "name": "Owner - AI Section Apply (Persist)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var jsonData = pm.response.json();",
+              "if (jsonData.historyId) pm.collectionVariables.set('sectionHistoryId', jsonData.historyId);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"section\": \"hero\",\n  \"prompt\": \"Set hero title to \\\"Launch Fast\\\"\",\n  \"dryRun\": false\n}"
+        },
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/ai/sections/apply"
+      }
+    },
+    {
+      "name": "Owner - AI Section History",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/ai/sections/history"
+      }
+    },
+    {
+      "name": "Owner - AI Section History Revert",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reason\": \"Undo latest section update\"\n}"
+        },
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/ai/sections/history/{{sectionHistoryId}}/revert"
+      }
+    },
+    {
+      "name": "Owner - Update User Profile (name/businessName/email)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Owner Name\",\n  \"businessName\": \"My AI Store\",\n  \"email\": \"owner.updated@example.com\"\n}"
+        },
+        "url": "{{baseUrl}}/api/users/me"
+      }
+    },
+    {
+      "name": "Owner - GDPR Export Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"note\": \"Need data copy for compliance\"\n}"
+        },
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/compliance/gdpr/export"
+      }
+    },
+    {
+      "name": "Owner - GDPR Delete Request",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"note\": \"User requested full delete\"\n}"
+        },
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/compliance/gdpr/delete-request"
+      }
+    },
+    {
+      "name": "Owner - GDPR Request List",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/compliance/requests?page=1&limit=20"
+      }
+    },
+    {
+      "name": "Owner - Orders List (Standard Query Contract)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/orders?page=1&limit=20&q=&status=completed&from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.000Z&sort=createdAt_desc"
+      }
+    },
+    {
+      "name": "Owner - Customers List (Standard Query Contract)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/customers?page=1&limit=20&q=&status=&from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.000Z&sort=lastOrder_desc"
+      }
+    },
+    {
+      "name": "Owner - Reviews List (Standard Query Contract)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/reviews?page=1&limit=20&q=&status=approved&from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.000Z&sort=createdAt_desc"
+      }
+    },
+    {
+      "name": "Owner - Transactions List (Standard Query Contract)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/payments/transactions?page=1&limit=20&q=&status=succeeded&from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.000Z&sort=createdAt_desc"
+      }
+    },
+    {
+      "name": "Owner - Notifications Logs (Standard Query Contract)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/stores/{{storeId}}/notifications/logs?page=1&limit=20&q=&status=sent&from=2026-01-01T00:00:00.000Z&to=2026-12-31T23:59:59.000Z&sort=createdAt_desc"
+      }
+    },
+    {
+      "name": "Super Admin - Audit Logs (Dashboard Format)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/super-admin/audit-logs?format=dashboard"
+      }
+    },
+    {
+      "name": "Super Admin - Security Incident Detail",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/super-admin/security/incidents/{{incidentId}}"
+      }
+    }
+  ]
+}

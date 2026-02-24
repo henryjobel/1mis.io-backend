@@ -171,7 +171,9 @@ export class PublicStoreService {
       where: { id: data.productId, storeId: store.id },
     });
     if (!product) throw new NotFoundException('Product not found');
-    if (!product.reviewsEnabled) {
+    const reviewsEnabled = (product as { reviewsEnabled?: boolean })
+      .reviewsEnabled;
+    if (reviewsEnabled === false) {
       throw new BadRequestException('Reviews are disabled for this product');
     }
 
@@ -338,6 +340,8 @@ export class PublicStoreService {
       customerPhone?: string;
       couponCode?: string;
       shippingAddress?: Record<string, unknown>;
+      paymentMethod?: 'cod' | 'stripe' | 'sslcommerz';
+      paymentMeta?: Record<string, unknown>;
     },
   ) {
     const store = await this.getActiveStore(slug);
@@ -396,8 +400,9 @@ export class PublicStoreService {
     const shipping = 0;
     const total = Math.max(0, taxableBase + tax + shipping);
     const code = `ORD-${Date.now().toString(36).toUpperCase()}`;
+    const paymentMethod = this.normalizePaymentMethod(data.paymentMethod);
 
-    const order = await this.prisma.$transaction(async (tx) => {
+    const checkoutResult = await this.prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
           storeId: store.id,
@@ -427,15 +432,20 @@ export class PublicStoreService {
         include: { items: true },
       });
 
-      await tx.paymentTransaction.create({
+      const paymentTx = await tx.paymentTransaction.create({
         data: {
           storeId: store.id,
           orderId: created.id,
-          provider: 'manual',
+          provider: paymentMethod,
           amount: total,
           currency: 'USD',
-          status: 'pending',
-          metadata: { source: 'public_checkout' },
+          status:
+            paymentMethod === 'cod' ? 'pending' : 'requires_confirmation',
+          metadata: {
+            source: 'public_checkout',
+            paymentMethod,
+            paymentMeta: (data.paymentMeta ?? {}) as Prisma.InputJsonValue,
+          } as Prisma.InputJsonValue,
         },
       });
 
@@ -451,10 +461,13 @@ export class PublicStoreService {
         }
 
         const variant = line.variantId
-          ? product.variants.find((item) => item.id === line.variantId)
+          ? product.variants.find((item) => item.id === line.variantId) ?? null
           : null;
         this.assertStockAvailability(product, variant, line.qty);
-        if (product.stockTrackingEnabled) {
+        const stockTrackingEnabled = (
+          product as { stockTrackingEnabled?: boolean }
+        ).stockTrackingEnabled;
+        if (stockTrackingEnabled !== false) {
           if (variant) {
             const updatedVariant = await tx.productVariant.updateMany({
               where: {
@@ -497,10 +510,72 @@ export class PublicStoreService {
           data: { usedCount: { increment: 1 } },
         });
       }
-      return created;
+      return { order: created, paymentTx };
     });
 
+    return {
+      ...checkoutResult.order,
+      payment: this.buildCheckoutPaymentResult(
+        paymentMethod,
+        checkoutResult.paymentTx.id,
+      ),
+    };
+  }
+
+  async order(slug: string, orderCode: string, email?: string) {
+    const store = await this.getActiveStore(slug);
+    const code = orderCode.trim();
+    const order = await this.prisma.order.findFirst({
+      where: {
+        storeId: store.id,
+        code,
+        ...(email ? { customerEmail: email.trim().toLowerCase() } : {}),
+      },
+      include: {
+        items: true,
+        shipment: true,
+        paymentTxns: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+    if (!order) throw new NotFoundException('Order not found');
     return order;
+  }
+
+  async policies(slug: string) {
+    const store = await this.getActiveStore(slug);
+    const [content, domain] = await Promise.all([
+      this.prisma.platformSetting.findUnique({
+        where: { key: `store_content:${store.id}` },
+      }),
+      this.prisma.platformSetting.findUnique({
+        where: { key: `domain:${store.id}` },
+      }),
+    ]);
+
+    const contentJson = this.asRecord(content?.valueJson);
+    const domainJson = this.asRecord(domain?.valueJson);
+    const domainName =
+      this.asString(domainJson.domain, '') || `${store.slug}.1mis.io`;
+    const storeName = store.name;
+
+    const privacy = this.asString(
+      contentJson.privacyPolicy,
+      `This Privacy Policy describes how ${storeName} collects and uses customer data for orders, support, and fulfillment. For requests, contact support@${domainName}.`,
+    );
+    const terms = this.asString(
+      contentJson.termsAndConditions,
+      `By placing an order with ${storeName}, you agree to product pricing, shipping timelines, and return conditions published on this storefront.`,
+    );
+
+    return {
+      storeId: store.id,
+      storeName,
+      privacyPolicy: privacy,
+      termsAndConditions: terms,
+      updatedAt:
+        content?.updatedAt.toISOString() ??
+        store.updatedAt.toISOString(),
+    };
   }
 
   private async computeCouponDiscount(
@@ -599,14 +674,14 @@ export class PublicStoreService {
   }
 
   private assertStockAvailability(
-    product: { title: string; stockTrackingEnabled: boolean; stock: number },
+    product: { title: string; stockTrackingEnabled?: boolean; stock: number },
     variant: { stock: number; optionValue: string } | null,
     qty: number,
   ) {
     if (qty < 1) {
       throw new BadRequestException('Quantity must be at least 1');
     }
-    if (!product.stockTrackingEnabled) return;
+    if (product.stockTrackingEnabled === false) return;
 
     const available = variant ? variant.stock : product.stock;
     if (qty > available) {
@@ -639,6 +714,55 @@ export class PublicStoreService {
       return Number(product.discountedPrice);
     }
     return Number(product.price);
+  }
+
+  private normalizePaymentMethod(
+    paymentMethod?: 'cod' | 'stripe' | 'sslcommerz',
+  ) {
+    if (paymentMethod === 'stripe') return 'stripe';
+    if (paymentMethod === 'sslcommerz') return 'sslcommerz';
+    return 'cod';
+  }
+
+  private buildCheckoutPaymentResult(
+    paymentMethod: 'cod' | 'stripe' | 'sslcommerz',
+    transactionId: string,
+  ) {
+    if (paymentMethod === 'stripe') {
+      return {
+        transactionId,
+        provider: 'stripe',
+        status: 'requires_confirmation',
+        clientSecret: `pi_${transactionId}_secret_${Date.now().toString(36)}`,
+      };
+    }
+    if (paymentMethod === 'sslcommerz') {
+      return {
+        transactionId,
+        provider: 'sslcommerz',
+        status: 'requires_confirmation',
+        redirectUrl: `https://sandbox.sslcommerz.com/checkout/${transactionId}`,
+      };
+    }
+    return {
+      transactionId,
+      provider: 'cod',
+      status: 'pending',
+      instructions: 'Collect cash on delivery',
+    };
+  }
+
+  private asRecord(value: Prisma.JsonValue | null | undefined) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {} as Record<string, unknown>;
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private asString(value: unknown, fallback: string) {
+    if (typeof value !== 'string') return fallback;
+    const trimmed = value.trim();
+    return trimmed || fallback;
   }
 
   private async getActiveStore(slug: string) {

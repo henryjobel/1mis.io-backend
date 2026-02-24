@@ -14,6 +14,36 @@ class WebhookPayloadDto {
   payload!: Record<string, unknown>;
 }
 
+class PaymentWebhookDto {
+  @IsOptional()
+  @IsString()
+  eventType?: string;
+
+  @IsOptional()
+  @IsString()
+  transactionId?: string;
+
+  @IsOptional()
+  @IsString()
+  providerRef?: string;
+
+  @IsOptional()
+  @IsString()
+  orderId?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  storeId?: string;
+
+  @IsOptional()
+  @IsObject()
+  payload?: Record<string, unknown>;
+}
+
 @Controller('api/webhooks')
 export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
@@ -32,5 +62,21 @@ export class WebhooksController {
     @Headers('x-webhook-secret') secret?: string,
   ) {
     return this.webhooksService.receive('gtm', dto, secret);
+  }
+
+  @Post('stripe')
+  stripe(
+    @Body() dto: PaymentWebhookDto,
+    @Headers('x-webhook-secret') secret?: string,
+  ) {
+    return this.webhooksService.receivePayment('stripe', dto, secret);
+  }
+
+  @Post('sslcommerz')
+  sslcommerz(
+    @Body() dto: PaymentWebhookDto,
+    @Headers('x-webhook-secret') secret?: string,
+  ) {
+    return this.webhooksService.receivePayment('sslcommerz', dto, secret);
   }
 }

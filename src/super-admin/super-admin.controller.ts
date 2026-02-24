@@ -116,6 +116,48 @@ class UpdateTicketDto {
   priority?: 'low' | 'medium' | 'high';
 }
 
+class CreateIncidentDto {
+  @IsString()
+  title!: string;
+
+  @IsIn(['info', 'warning', 'critical'])
+  level!: 'info' | 'warning' | 'critical';
+
+  @IsOptional()
+  @IsIn(['monitoring', 'resolved'])
+  status?: 'monitoring' | 'resolved';
+
+  @IsOptional()
+  @IsISO8601()
+  startedAt?: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+}
+
+class UpdateIncidentDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsIn(['info', 'warning', 'critical'])
+  level?: 'info' | 'warning' | 'critical';
+
+  @IsOptional()
+  @IsIn(['monitoring', 'resolved'])
+  status?: 'monitoring' | 'resolved';
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @IsOptional()
+  @IsString()
+  resolutionNote?: string;
+}
+
 class UpdateFlagDto {
   @IsBoolean()
   enabled!: boolean;
@@ -172,6 +214,12 @@ class OverviewMetricsQueryDto {
   @IsOptional()
   @IsISO8601()
   to?: string;
+}
+
+class AuditLogQueryDto {
+  @IsOptional()
+  @IsIn(['dashboard'])
+  format?: 'dashboard';
 }
 
 @Controller('api/super-admin')
@@ -368,6 +416,37 @@ export class SuperAdminController {
     return this.superAdminService.updateTicket(id, dto, user);
   }
 
+  @Get('security/incidents')
+  @Roles(Role.super_admin, Role.ops)
+  securityIncidents() {
+    return this.superAdminService.securityIncidents();
+  }
+
+  @Get('security/incidents/:id')
+  @Roles(Role.super_admin, Role.ops)
+  securityIncident(@Param('id') id: string) {
+    return this.superAdminService.securityIncident(id);
+  }
+
+  @Post('security/incidents')
+  @Roles(Role.super_admin, Role.ops)
+  createSecurityIncident(
+    @Body() dto: CreateIncidentDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.createSecurityIncident(dto, user);
+  }
+
+  @Patch('security/incidents/:id')
+  @Roles(Role.super_admin, Role.ops)
+  updateSecurityIncident(
+    @Param('id') id: string,
+    @Body() dto: UpdateIncidentDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.updateSecurityIncident(id, dto, user);
+  }
+
   @Get('health')
   @Roles(Role.super_admin, Role.ops)
   health() {
@@ -410,8 +489,8 @@ export class SuperAdminController {
 
   @Get('audit-logs')
   @Roles(Role.super_admin, Role.ops, Role.finance, Role.support)
-  auditLogs() {
-    return this.superAdminService.auditLogs();
+  auditLogs(@Query() query: AuditLogQueryDto) {
+    return this.superAdminService.auditLogs(query.format);
   }
 
   @Get('settings')

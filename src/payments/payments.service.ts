@@ -147,10 +147,116 @@ export class PaymentsService {
     return refunded;
   }
 
-  transactions(storeId: string) {
-    return this.prisma.paymentTransaction.findMany({
-      where: { storeId },
-      orderBy: { createdAt: 'desc' },
+  async transactions(
+    storeId: string,
+    options?: {
+      page?: number;
+      limit?: number;
+      q?: string;
+      status?: string;
+      from?: string;
+      to?: string;
+      sort?: string;
+    },
+  ) {
+    const page = Math.max(1, options?.page ?? 1);
+    const limit = Math.min(Math.max(options?.limit ?? 20, 1), 200);
+    const where: Prisma.PaymentTransactionWhereInput = {
+      storeId,
+      ...(options?.status ? { status: options.status } : {}),
+      ...(options?.q
+        ? {
+            OR: [
+              { provider: { contains: options.q, mode: 'insensitive' } },
+              { providerRef: { contains: options.q, mode: 'insensitive' } },
+              {
+                order: {
+                  OR: [
+                    { code: { contains: options.q, mode: 'insensitive' } },
+                    {
+                      customerName: {
+                        contains: options.q,
+                        mode: 'insensitive',
+                      },
+                    },
+                    {
+                      customerEmail: {
+                        contains: options.q,
+                        mode: 'insensitive',
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          }
+        : {}),
+      ...(options?.from || options?.to
+        ? {
+            createdAt: {
+              ...(options?.from ? { gte: new Date(options.from) } : {}),
+              ...(options?.to ? { lte: new Date(options.to) } : {}),
+            },
+          }
+        : {}),
+    };
+    const skip = (page - 1) * limit;
+    const orderBy = this.transactionSort(options?.sort);
+
+    const [items, total] = await Promise.all([
+      this.prisma.paymentTransaction.findMany({
+        where,
+        include: {
+          order: {
+            select: {
+              id: true,
+              code: true,
+              customerName: true,
+              customerEmail: true,
+            },
+          },
+        },
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      this.prisma.paymentTransaction.count({ where }),
+    ]);
+
+    return {
+      items,
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
+  }
+
+  async transaction(storeId: string, transactionId: string) {
+    const tx = await this.prisma.paymentTransaction.findFirst({
+      where: { id: transactionId, storeId },
+      include: {
+        order: {
+          include: {
+            items: true,
+            shipment: true,
+          },
+        },
+      },
     });
+    if (!tx) throw new NotFoundException('Transaction not found');
+    return tx;
+  }
+
+  private transactionSort(
+    sort?: string,
+  ): Prisma.PaymentTransactionOrderByWithRelationInput {
+    const key = String(sort ?? 'createdAt_desc').trim().toLowerCase();
+    if (key === 'createdat_asc') return { createdAt: 'asc' };
+    if (key === 'amount_desc') return { amount: 'desc' };
+    if (key === 'amount_asc') return { amount: 'asc' };
+    if (key === 'status_asc') return { status: 'asc' };
+    if (key === 'status_desc') return { status: 'desc' };
+    return { createdAt: 'desc' };
   }
 }

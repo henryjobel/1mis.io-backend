@@ -42,7 +42,7 @@ export class AuthService {
         email: dto.email,
         passwordHash,
         role: Role.owner,
-      },
+      } as any,
     });
 
     await this.auditService.log({
@@ -207,7 +207,7 @@ export class AuthService {
         role: true,
         isActive: true,
         createdAt: true,
-      },
+      } as any,
     });
   }
 
@@ -243,11 +243,10 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           name: normalizedEmail.split('@')[0],
-          businessName: null,
           email: normalizedEmail,
           passwordHash: await hash(randomUUID(), 10),
           role: Role.owner,
-        },
+        } as any,
       });
     }
 

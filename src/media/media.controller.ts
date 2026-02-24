@@ -105,6 +105,14 @@ export class MediaController {
     return this.mediaService.completeUpload(storeId, dto, user);
   }
 
+  @Get('uploads/:uploadId/status')
+  uploadStatus(
+    @Param('id') storeId: string,
+    @Param('uploadId') uploadId: string,
+  ) {
+    return this.mediaService.uploadStatus(storeId, uploadId);
+  }
+
   @Delete(':assetId')
   remove(
     @Param('id') storeId: string,

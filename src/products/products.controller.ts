@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Type } from 'class-transformer';
@@ -13,12 +14,16 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsInt,
   IsDateString,
   IsIn,
-  IsNumber,
+  IsISO8601,
   IsOptional,
+  IsNumber,
   IsString,
   IsUrl,
+  Max,
+  Min,
 } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -318,6 +323,46 @@ class RegenerateProductAiFieldDto {
   apply?: boolean;
 }
 
+class ProductListQueryDto {
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @Type(() => Number)
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
+
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  to?: string;
+
+  @IsOptional()
+  @IsString()
+  sort?: string;
+}
+
+class UpdateProductDeliveryDto {
+  @IsBoolean()
+  enabled!: boolean;
+}
+
 @Controller('api/stores/:id/products')
 @UseGuards(JwtAuthGuard, StoreAccessGuard)
 export class ProductsController {
@@ -342,8 +387,8 @@ export class ProductsController {
   }
 
   @Get()
-  list(@Param('id') storeId: string) {
-    return this.productsService.list(storeId);
+  list(@Param('id') storeId: string, @Query() query: ProductListQueryDto) {
+    return this.productsService.list(storeId, query);
   }
 
   @Get(':productId')
@@ -378,6 +423,21 @@ export class ProductsController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.productsService.duplicate(storeId, productId, dto, user);
+  }
+
+  @Patch(':productId/delivery')
+  updateProductDelivery(
+    @Param('id') storeId: string,
+    @Param('productId') productId: string,
+    @Body() dto: UpdateProductDeliveryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.productsService.updateDelivery(
+      storeId,
+      productId,
+      dto.enabled,
+      user,
+    );
   }
 
   @Post(':productId/ai/regenerate-field')
