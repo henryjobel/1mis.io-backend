@@ -27,6 +27,31 @@ __decorate([
     (0, class_validator_1.IsEnum)(client_1.StoreStatus),
     __metadata("design:type", String)
 ], UpdateStoreStatusDto.prototype, "status", void 0);
+class CreateStoreDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateStoreDto.prototype, "name", void 0);
+__decorate([
+    (0, class_validator_1.IsEmail)(),
+    __metadata("design:type", String)
+], CreateStoreDto.prototype, "ownerEmail", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['Starter', 'Growth', 'Scale']),
+    __metadata("design:type", String)
+], CreateStoreDto.prototype, "plan", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateStoreDto.prototype, "region", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['active', 'trial', 'suspended']),
+    __metadata("design:type", String)
+], CreateStoreDto.prototype, "status", void 0);
 class UpdateLifecycleDto {
 }
 __decorate([
@@ -49,6 +74,13 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateLifecycleDto.prototype, "notes", void 0);
+class ThemeSyncDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], ThemeSyncDto.prototype, "at", void 0);
 class InviteAdminDto {
 }
 __decorate([
@@ -101,6 +133,58 @@ __decorate([
     (0, class_validator_1.IsIn)(['low', 'medium', 'high']),
     __metadata("design:type", String)
 ], UpdateTicketDto.prototype, "priority", void 0);
+class CreateIncidentDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateIncidentDto.prototype, "title", void 0);
+__decorate([
+    (0, class_validator_1.IsIn)(['info', 'warning', 'critical']),
+    __metadata("design:type", String)
+], CreateIncidentDto.prototype, "level", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['monitoring', 'resolved']),
+    __metadata("design:type", String)
+], CreateIncidentDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], CreateIncidentDto.prototype, "startedAt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateIncidentDto.prototype, "note", void 0);
+class UpdateIncidentDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateIncidentDto.prototype, "title", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['info', 'warning', 'critical']),
+    __metadata("design:type", String)
+], UpdateIncidentDto.prototype, "level", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['monitoring', 'resolved']),
+    __metadata("design:type", String)
+], UpdateIncidentDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateIncidentDto.prototype, "note", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UpdateIncidentDto.prototype, "resolutionNote", void 0);
 class UpdateFlagDto {
 }
 __decorate([
@@ -159,6 +243,19 @@ __decorate([
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], UpdateAdminStatusDto.prototype, "isActive", void 0);
+class SetMaintenanceModeDto {
+}
+__decorate([
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], SetMaintenanceModeDto.prototype, "enabled", void 0);
+class UpdateAiHardCapDto {
+}
+__decorate([
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], UpdateAiHardCapDto.prototype, "hardCapUsd", void 0);
 class OverviewMetricsQueryDto {
 }
 __decorate([
@@ -171,6 +268,13 @@ __decorate([
     (0, class_validator_1.IsISO8601)(),
     __metadata("design:type", String)
 ], OverviewMetricsQueryDto.prototype, "to", void 0);
+class AuditLogQueryDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['dashboard']),
+    __metadata("design:type", String)
+], AuditLogQueryDto.prototype, "format", void 0);
 let SuperAdminController = class SuperAdminController {
     constructor(superAdminService) {
         this.superAdminService = superAdminService;
@@ -184,8 +288,14 @@ let SuperAdminController = class SuperAdminController {
     stores() {
         return this.superAdminService.stores();
     }
+    createStore(dto, user) {
+        return this.superAdminService.createStore(dto, user);
+    }
     updateStoreStatus(id, dto, user) {
         return this.superAdminService.updateStoreStatus(id, dto.status, user);
+    }
+    deleteStore(id, user) {
+        return this.superAdminService.deleteStore(id, user);
     }
     lifecycle() {
         return this.superAdminService.lifecycle();
@@ -195,6 +305,9 @@ let SuperAdminController = class SuperAdminController {
     }
     updateLifecycle(storeId, dto, user) {
         return this.superAdminService.updateLifecycle(storeId, dto, user);
+    }
+    markThemeSynced(storeId, dto, user) {
+        return this.superAdminService.markThemeSynced(storeId, dto.at, user);
     }
     admins() {
         return this.superAdminService.admins();
@@ -213,6 +326,9 @@ let SuperAdminController = class SuperAdminController {
     }
     subscriptions() {
         return this.superAdminService.subscriptions();
+    }
+    syncSubscriptionPricing(user) {
+        return this.superAdminService.syncSubscriptionPricing(user);
     }
     subscriptionByStore(storeId) {
         return this.superAdminService.subscriptionByStore(storeId);
@@ -238,6 +354,9 @@ let SuperAdminController = class SuperAdminController {
     updatePaymentOps(storeId, dto, user) {
         return this.superAdminService.updatePaymentOps(storeId, dto, user);
     }
+    resetPaymentFailures(storeId, user) {
+        return this.superAdminService.resetPaymentFailures(storeId, user);
+    }
     tickets() {
         return this.superAdminService.tickets();
     }
@@ -247,8 +366,26 @@ let SuperAdminController = class SuperAdminController {
     updateTicket(id, dto, user) {
         return this.superAdminService.updateTicket(id, dto, user);
     }
+    securityIncidents() {
+        return this.superAdminService.securityIncidents();
+    }
+    securityIncident(id) {
+        return this.superAdminService.securityIncident(id);
+    }
+    createSecurityIncident(dto, user) {
+        return this.superAdminService.createSecurityIncident(dto, user);
+    }
+    updateSecurityIncident(id, dto, user) {
+        return this.superAdminService.updateSecurityIncident(id, dto, user);
+    }
+    rotatePlatformKeys(user) {
+        return this.superAdminService.rotatePlatformKeys(user);
+    }
     health() {
         return this.superAdminService.health();
+    }
+    setMaintenanceMode(dto, user) {
+        return this.superAdminService.setMaintenanceMode(dto.enabled, user);
     }
     restartService(service) {
         return this.superAdminService.restartService(service);
@@ -256,14 +393,17 @@ let SuperAdminController = class SuperAdminController {
     aiUsage() {
         return this.superAdminService.aiUsage();
     }
+    updateAiHardCap(dto, user) {
+        return this.superAdminService.updateAiHardCap(dto.hardCapUsd, user);
+    }
     flags() {
         return this.superAdminService.flags();
     }
     upsertFlag(key, dto, user) {
         return this.superAdminService.upsertFlag(key, dto.enabled, dto.description, dto.rolloutPct, user);
     }
-    auditLogs() {
-        return this.superAdminService.auditLogs();
+    auditLogs(query) {
+        return this.superAdminService.auditLogs(query.format);
     }
     settings() {
         return this.superAdminService.settings();
@@ -299,6 +439,15 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "stores", null);
 __decorate([
+    (0, common_1.Post)('stores'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [CreateStoreDto, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "createStore", null);
+__decorate([
     (0, common_1.Patch)('stores/:id/status'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
     __param(0, (0, common_1.Param)('id')),
@@ -308,6 +457,15 @@ __decorate([
     __metadata("design:paramtypes", [String, UpdateStoreStatusDto, Object]),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "updateStoreStatus", null);
+__decorate([
+    (0, common_1.Delete)('stores/:id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "deleteStore", null);
 __decorate([
     (0, common_1.Get)('lifecycle'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops, client_1.Role.support),
@@ -333,6 +491,16 @@ __decorate([
     __metadata("design:paramtypes", [String, UpdateLifecycleDto, Object]),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "updateLifecycle", null);
+__decorate([
+    (0, common_1.Post)('lifecycle/:storeId/theme-sync'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
+    __param(0, (0, common_1.Param)('storeId')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, ThemeSyncDto, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "markThemeSynced", null);
 __decorate([
     (0, common_1.Get)('admins'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin),
@@ -384,6 +552,14 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "subscriptions", null);
+__decorate([
+    (0, common_1.Post)('subscriptions/sync-pricing'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "syncSubscriptionPricing", null);
 __decorate([
     (0, common_1.Get)('subscriptions/:storeId'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance),
@@ -453,6 +629,15 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "updatePaymentOps", null);
 __decorate([
+    (0, common_1.Post)('payment-ops/:storeId/reset-failures'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.finance, client_1.Role.ops),
+    __param(0, (0, common_1.Param)('storeId')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "resetPaymentFailures", null);
+__decorate([
     (0, common_1.Get)('tickets'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.support),
     __metadata("design:type", Function),
@@ -478,12 +663,63 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "updateTicket", null);
 __decorate([
+    (0, common_1.Get)('security/incidents'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "securityIncidents", null);
+__decorate([
+    (0, common_1.Get)('security/incidents/:id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "securityIncident", null);
+__decorate([
+    (0, common_1.Post)('security/incidents'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [CreateIncidentDto, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "createSecurityIncident", null);
+__decorate([
+    (0, common_1.Patch)('security/incidents/:id'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, UpdateIncidentDto, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "updateSecurityIncident", null);
+__decorate([
+    (0, common_1.Post)('security/rotate-keys'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "rotatePlatformKeys", null);
+__decorate([
     (0, common_1.Get)('health'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "health", null);
+__decorate([
+    (0, common_1.Post)('health/maintenance'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [SetMaintenanceModeDto, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "setMaintenanceMode", null);
 __decorate([
     (0, common_1.Post)('health/:service/restart'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
@@ -499,6 +735,15 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "aiUsage", null);
+__decorate([
+    (0, common_1.Patch)('ai-usage/hard-cap'),
+    (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [UpdateAiHardCapDto, Object]),
+    __metadata("design:returntype", void 0)
+], SuperAdminController.prototype, "updateAiHardCap", null);
 __decorate([
     (0, common_1.Get)('flags'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops),
@@ -519,8 +764,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('audit-logs'),
     (0, roles_decorator_1.Roles)(client_1.Role.super_admin, client_1.Role.ops, client_1.Role.finance, client_1.Role.support),
+    __param(0, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [AuditLogQueryDto]),
     __metadata("design:returntype", void 0)
 ], SuperAdminController.prototype, "auditLogs", null);
 __decorate([

@@ -1,6 +1,9 @@
 import { Prisma, Role, StoreStatus } from '@prisma/client';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+type DashboardStoreStatus = 'active' | 'trial' | 'suspended';
+type DashboardPlan = 'Starter' | 'Growth' | 'Scale';
+type DashboardSubscriptionStatus = 'active' | 'trial' | 'past_due' | 'cancelled';
 export declare class SuperAdminService {
     private readonly prisma;
     private readonly auditService;
@@ -19,48 +22,72 @@ export declare class SuperAdminService {
         activeStores: number;
         failedPayments: number;
     }>;
-    stores(): Prisma.PrismaPromise<{
+    stores(): Promise<{
         id: string;
         name: string;
+        ownerEmail: string;
+        plan: DashboardPlan;
+        region: string;
+        gmvUsd: number;
+        status: DashboardStoreStatus;
         createdAt: Date;
-        updatedAt: Date;
-        ownerId: string;
-        slug: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
-        themePreset: string | null;
-        publishedAt: Date | null;
     }[]>;
+    createStore(data: {
+        name: string;
+        ownerEmail: string;
+        plan?: 'Starter' | 'Growth' | 'Scale';
+        region?: string;
+        status?: 'active' | 'trial' | 'suspended';
+    }, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        id: string;
+        name: string;
+        ownerEmail: string;
+        plan: DashboardPlan;
+        region: string;
+        gmvUsd: number;
+        status: "active" | "suspended" | "trial";
+        createdAt: Date;
+    }>;
     updateStoreStatus(id: string, status: StoreStatus, actor: {
         id: string;
         role: Role;
     }): Promise<{
         id: string;
         name: string;
+        ownerEmail: string;
+        status: DashboardStoreStatus;
         createdAt: Date;
-        updatedAt: Date;
-        ownerId: string;
-        slug: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
-        themePreset: string | null;
-        publishedAt: Date | null;
     }>;
-    lifecycle(): Prisma.GetStoreGroupByPayload<{
-        by: "status"[];
-        _count: true;
+    deleteStore(id: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        deleted: boolean;
+        id: string;
+        name: string;
     }>;
+    lifecycle(): Promise<{
+        storeId: string;
+        storeName: string;
+        publishStatus: string;
+        domain: string;
+        domainStatus: string;
+        sslStatus: string;
+        lastPublishedAt: string;
+        lastThemeUpdateAt: string;
+    }[]>;
     lifecycleByStore(storeId: string): Promise<{
-        store: {
-            id: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            ownerId: string;
-            slug: string;
-            status: import(".prisma/client").$Enums.StoreStatus;
-            themePreset: string | null;
-            publishedAt: Date | null;
-        } | null;
-        lifecycleConfig: string | number | boolean | Prisma.JsonObject | Prisma.JsonArray | null;
+        storeId: string;
+        storeName: string;
+        publishStatus: string;
+        domain: string;
+        domainStatus: string;
+        sslStatus: string;
+        lastPublishedAt: string;
+        lastThemeUpdateAt: string;
     }>;
     updateLifecycle(storeId: string, payload: {
         publishStatus?: string;
@@ -71,16 +98,35 @@ export declare class SuperAdminService {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
-        key: string;
-        valueJson: Prisma.JsonValue;
+        storeId: string;
+        storeName: string;
+        publishStatus: string;
+        domain: string;
+        domainStatus: string;
+        sslStatus: string;
+        lastPublishedAt: string;
+        lastThemeUpdateAt: string;
     }>;
-    admins(): Prisma.PrismaPromise<{
+    markThemeSynced(storeId: string, at: string | undefined, actor: {
         id: string;
-        email: string;
+        role: Role;
+    }): Promise<{
+        storeId: string;
+        storeName: string;
+        publishStatus: string;
+        domain: string;
+        domainStatus: string;
+        sslStatus: string;
+        lastPublishedAt: string;
+        lastThemeUpdateAt: string;
+    }>;
+    admins(): Promise<{
+        id: string;
         name: string;
+        email: string;
         role: import(".prisma/client").$Enums.Role;
-        isActive: boolean;
+        status: string;
+        lastActive: string;
     }[]>;
     inviteAdmin(data: {
         name: string;
@@ -91,19 +137,22 @@ export declare class SuperAdminService {
         role: Role;
     }): Promise<{
         id: string;
-        email: string;
         name: string;
+        email: string;
         role: import(".prisma/client").$Enums.Role;
+        status: string;
+        lastActive: string;
     }>;
     updateAdminStatus(id: string, isActive: boolean, actor: {
         id: string;
         role: Role;
     }): Promise<{
         id: string;
-        email: string;
         name: string;
+        email: string;
         role: import(".prisma/client").$Enums.Role;
-        isActive: boolean;
+        status: string;
+        lastActive: string;
     }>;
     resetAdminPassword(id: string, actor: {
         id: string;
@@ -122,15 +171,30 @@ export declare class SuperAdminService {
         simulated: boolean;
     }>;
     subscriptions(): Promise<{
+        id: string;
         storeId: string;
         storeName: string;
-        subscription: Record<string, unknown>;
-        createdAt: Date;
+        ownerEmail: string;
+        plan: DashboardPlan;
+        status: DashboardSubscriptionStatus;
+        amountUsd: number;
+        nextBillingDate: string;
+        expiryDate: string;
+        lastPaymentDate: string;
+        failedPaymentCount: number;
     }[]>;
     subscriptionByStore(storeId: string): Promise<{
+        id: string;
         storeId: string;
         storeName: string;
-        subscription: Record<string, unknown>;
+        ownerEmail: string;
+        plan: DashboardPlan;
+        status: DashboardSubscriptionStatus;
+        amountUsd: number;
+        nextBillingDate: string;
+        expiryDate: string;
+        lastPaymentDate: string;
+        failedPaymentCount: number;
     }>;
     updateSubscription(storeId: string, payload: {
         plan?: string;
@@ -141,9 +205,17 @@ export declare class SuperAdminService {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
-        key: string;
-        valueJson: Prisma.JsonValue;
+        id: string;
+        storeId: string;
+        storeName: string;
+        ownerEmail: string;
+        plan: DashboardPlan;
+        status: DashboardSubscriptionStatus;
+        amountUsd: number;
+        nextBillingDate: string;
+        expiryDate: string;
+        lastPaymentDate: string;
+        failedPaymentCount: number;
     }>;
     retrySubscription(storeId: string, actor: {
         id: string;
@@ -152,9 +224,17 @@ export declare class SuperAdminService {
         retried: boolean;
         storeId: string;
         result: {
-            updatedAt: Date;
-            key: string;
-            valueJson: Prisma.JsonValue;
+            id: string;
+            storeId: string;
+            storeName: string;
+            ownerEmail: string;
+            plan: DashboardPlan;
+            status: DashboardSubscriptionStatus;
+            amountUsd: number;
+            nextBillingDate: string;
+            expiryDate: string;
+            lastPaymentDate: string;
+            failedPaymentCount: number;
         };
     }>;
     cancelSubscription(storeId: string, actor: {
@@ -164,13 +244,37 @@ export declare class SuperAdminService {
         cancelled: boolean;
         storeId: string;
         result: {
-            updatedAt: Date;
-            key: string;
-            valueJson: Prisma.JsonValue;
+            id: string;
+            storeId: string;
+            storeName: string;
+            ownerEmail: string;
+            plan: DashboardPlan;
+            status: DashboardSubscriptionStatus;
+            amountUsd: number;
+            nextBillingDate: string;
+            expiryDate: string;
+            lastPaymentDate: string;
+            failedPaymentCount: number;
         };
+    }>;
+    syncSubscriptionPricing(actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        updated: number;
+        skipped: number;
+        prices: Record<DashboardPlan, number>;
     }>;
     paymentOps(): Promise<{
         storeId: string;
+        storeName: string;
+        stripeEnabled: boolean;
+        stripeMode: "test" | "live";
+        sslCommerzEnabled: boolean;
+        sslCommerzMode: "test" | "live";
+        codEnabled: boolean;
+        failedCheckout24h: number;
+        checkoutSuccessRatePct: number;
     }[]>;
     paymentOpsMetrics(): Promise<{
         totalTransactions: number;
@@ -179,8 +283,14 @@ export declare class SuperAdminService {
     }>;
     paymentOpsByStore(storeId: string): Promise<{
         storeId: string;
-        config: string | number | boolean | Prisma.JsonObject | Prisma.JsonArray | null;
-        message: string;
+        storeName: string;
+        stripeEnabled: boolean;
+        stripeMode: "test" | "live";
+        sslCommerzEnabled: boolean;
+        sslCommerzMode: "test" | "live";
+        codEnabled: boolean;
+        failedCheckout24h: number;
+        checkoutSuccessRatePct: number;
     }>;
     updatePaymentOps(storeId: string, payload: {
         stripeEnabled?: boolean;
@@ -191,19 +301,49 @@ export declare class SuperAdminService {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
-        key: string;
-        valueJson: Prisma.JsonValue;
+        storeId: string;
+        storeName: string;
+        stripeEnabled: boolean;
+        stripeMode: "test" | "live";
+        sslCommerzEnabled: boolean;
+        sslCommerzMode: "test" | "live";
+        codEnabled: boolean;
+        failedCheckout24h: number;
+        checkoutSuccessRatePct: number;
+    }>;
+    resetPaymentFailures(storeId: string, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        storeId: string;
+        storeName: string;
+        stripeEnabled: boolean;
+        stripeMode: "test" | "live";
+        sslCommerzEnabled: boolean;
+        sslCommerzMode: "test" | "live";
+        codEnabled: boolean;
+        failedCheckout24h: number;
+        checkoutSuccessRatePct: number;
     }>;
     tickets(): Promise<{
-        items: {
-            id: string;
-        }[];
-        note: string;
-    }>;
-    ticket(id: string): Promise<{
-        note: string;
         id: string;
+        storeName: string;
+        category: string;
+        priority: string;
+        status: string;
+        slaHours: number;
+        createdAt: string;
+        note: string;
+    }[]>;
+    ticket(id: string): Promise<{
+        id: string;
+        storeName: string;
+        category: string;
+        priority: string;
+        status: string;
+        slaHours: number;
+        createdAt: string;
+        note: string;
     }>;
     updateTicket(id: string, payload: {
         status: 'open' | 'in_progress' | 'resolved';
@@ -213,23 +353,135 @@ export declare class SuperAdminService {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
-        key: string;
-        valueJson: Prisma.JsonValue;
-    }>;
-    health(): {
+        id: string;
+        storeName: string;
+        category: string;
+        priority: string;
         status: string;
-        services: string[];
-    };
+        slaHours: number;
+        createdAt: string;
+        note: string;
+    }>;
+    securityIncidents(): Promise<{
+        id: string;
+        title: string;
+        level: string;
+        startedAt: string;
+        status: string;
+        note: string;
+        resolutionNote: string;
+        resolvedAt: string;
+        updatedAt: string;
+    }[]>;
+    createSecurityIncident(payload: {
+        title: string;
+        level: 'info' | 'warning' | 'critical';
+        status?: 'monitoring' | 'resolved';
+        startedAt?: string;
+        note?: string;
+        resolutionNote?: string;
+    }, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        id: string;
+        title: string;
+        level: string;
+        startedAt: string;
+        status: string;
+        note: string;
+        resolutionNote: string;
+        resolvedAt: string;
+        updatedAt: string;
+    }>;
+    updateSecurityIncident(id: string, payload: {
+        title?: string;
+        level?: 'info' | 'warning' | 'critical';
+        status?: 'monitoring' | 'resolved';
+        note?: string;
+        resolutionNote?: string;
+    }, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        id: string;
+        title: string;
+        level: string;
+        startedAt: string;
+        status: string;
+        note: string;
+        resolutionNote: string;
+        resolvedAt: string;
+        updatedAt: string;
+    }>;
+    securityIncident(id: string): Promise<{
+        id: string;
+        title: string;
+        level: string;
+        startedAt: string;
+        status: string;
+        note: string;
+        resolutionNote: string;
+        resolvedAt: string;
+        updatedAt: string;
+    }>;
+    health(): Promise<{
+        status: string;
+        maintenanceMode: boolean;
+        services: {
+            name: string;
+            uptimePct: number;
+            latencyMs: number;
+            status: string;
+        }[];
+        generatedAt: string;
+    }>;
     restartService(service: string): {
         service: string;
         restarted: boolean;
         mode: string;
     };
+    setMaintenanceMode(enabled: boolean, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        enabled: boolean;
+        updatedAt: string;
+    }>;
     aiUsage(): Promise<{
+        models: {
+            model: string;
+            requests: number;
+            tokens: number;
+            costUsd: number;
+            quotaPct: number;
+        }[];
         grouped: (Prisma.PickEnumerable<Prisma.AiGenerationJobGroupByOutputType, "status"[]> & {
             _count: number;
         })[];
+        totals: {
+            requests: number;
+            completed: number;
+            failed: number;
+        };
+        hardCapUsd: number;
+        utilizationPct: number;
+    }>;
+    updateAiHardCap(hardCapUsd: number, actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        hardCapUsd: number;
+        updatedAt: string;
+    }>;
+    rotatePlatformKeys(actor: {
+        id: string;
+        role: Role;
+    }): Promise<{
+        rotated: boolean;
+        keyVersion: number;
+        keyId: string;
+        rotatedAt: string;
     }>;
     flags(): Prisma.PrismaPromise<{
         updatedAt: Date;
@@ -248,7 +500,12 @@ export declare class SuperAdminService {
         enabled: boolean;
         rolloutPct: number;
     }>;
-    auditLogs(): Prisma.PrismaPromise<{
+    auditLogs(format?: 'dashboard'): Promise<({
+        actor: {
+            email: string;
+            name: string;
+        } | null;
+    } & {
         id: string;
         role: import(".prisma/client").$Enums.Role | null;
         createdAt: Date;
@@ -257,6 +514,13 @@ export declare class SuperAdminService {
         entityId: string;
         metaJson: Prisma.JsonValue | null;
         actorUserId: string | null;
+    })[] | {
+        id: string;
+        actor: string;
+        action: string;
+        target: string;
+        risk: "low" | "high" | "medium";
+        at: string;
     }[]>;
     settings(): Prisma.PrismaPromise<{
         updatedAt: Date;
@@ -277,4 +541,27 @@ export declare class SuperAdminService {
     }): Promise<{
         updated: number;
     }>;
+    private toSubscriptionRecord;
+    private toDashboardStoreStatus;
+    private dashboardStatusToStoreStatus;
+    private subscriptionToStoreStatus;
+    private normalizePlan;
+    private normalizeSubscriptionStatus;
+    private normalizeMode;
+    private toAdminStatus;
+    private toTicketRecord;
+    private toIncidentRecord;
+    private riskFromAction;
+    private normalizeTicketCategory;
+    private normalizeTicketPriority;
+    private normalizeTicketStatus;
+    private normalizeIncidentLevel;
+    private normalizeIncidentStatus;
+    private asRecord;
+    private asString;
+    private asNumber;
+    private asBoolean;
+    private slugify;
+    private generateUniqueSlug;
 }
+export {};

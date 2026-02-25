@@ -48,6 +48,42 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], SavePromptDto.prototype, "title", void 0);
+class UndoAiChangeDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], UndoAiChangeDto.prototype, "reason", void 0);
+class RevertAiChangeDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], RevertAiChangeDto.prototype, "reason", void 0);
+class ApplySectionPromptDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ApplySectionPromptDto.prototype, "section", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ApplySectionPromptDto.prototype, "prompt", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ApplySectionPromptDto.prototype, "dryRun", void 0);
+class RevertSectionHistoryDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], RevertSectionHistoryDto.prototype, "reason", void 0);
 let AiGenerationController = class AiGenerationController {
     constructor(aiGenerationService) {
         this.aiGenerationService = aiGenerationService;
@@ -79,6 +115,28 @@ let AiGenerationController = class AiGenerationController {
     }
     replayPrompt(storeId, promptId, user) {
         return this.aiGenerationService.replayPrompt(storeId, promptId, user);
+    }
+    history(storeId) {
+        return this.aiGenerationService.history(storeId);
+    }
+    undoLatest(storeId, user, dto) {
+        return this.aiGenerationService.undoLatest(storeId, user, dto.reason);
+    }
+    revertHistory(storeId, historyId, user, dto) {
+        return this.aiGenerationService.revertHistory(storeId, historyId, user, dto.reason);
+    }
+    applySectionPrompt(storeId, dto, user) {
+        return this.aiGenerationService.applySectionPrompt(storeId, {
+            section: dto.section,
+            prompt: dto.prompt,
+            dryRun: dto.dryRun ?? false,
+        }, user);
+    }
+    sectionHistory(storeId) {
+        return this.aiGenerationService.sectionHistory(storeId);
+    }
+    revertSectionHistory(storeId, historyId, user, dto) {
+        return this.aiGenerationService.revertSectionHistory(storeId, historyId, user, dto.reason);
     }
 };
 exports.AiGenerationController = AiGenerationController;
@@ -142,6 +200,58 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", void 0)
 ], AiGenerationController.prototype, "replayPrompt", null);
+__decorate([
+    (0, common_1.Get)('history'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "history", null);
+__decorate([
+    (0, common_1.Post)('history/undo'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, UndoAiChangeDto]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "undoLatest", null);
+__decorate([
+    (0, common_1.Post)('history/:historyId/revert'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('historyId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __param(3, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object, RevertAiChangeDto]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "revertHistory", null);
+__decorate([
+    (0, common_1.Post)('sections/apply'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, ApplySectionPromptDto, Object]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "applySectionPrompt", null);
+__decorate([
+    (0, common_1.Get)('sections/history'),
+    __param(0, (0, common_1.Param)('id')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "sectionHistory", null);
+__decorate([
+    (0, common_1.Post)('sections/history/:historyId/revert'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('historyId')),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __param(3, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object, RevertSectionHistoryDto]),
+    __metadata("design:returntype", void 0)
+], AiGenerationController.prototype, "revertSectionHistory", null);
 exports.AiGenerationController = AiGenerationController = __decorate([
     (0, common_1.Controller)('api/stores/:id/ai'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, store_access_guard_1.StoreAccessGuard),

@@ -148,6 +148,11 @@ let PublicStoreService = class PublicStoreService {
         });
         if (!product)
             throw new common_1.NotFoundException('Product not found');
+        const reviewsEnabled = product
+            .reviewsEnabled;
+        if (reviewsEnabled === false) {
+            throw new common_1.BadRequestException('Reviews are disabled for this product');
+        }
         return this.prisma.productReview.create({
             data: {
                 storeId: store.id,
@@ -162,52 +167,58 @@ let PublicStoreService = class PublicStoreService {
     }
     async getCart(slug, sessionId) {
         const store = await this.getActiveStore(slug);
-        if (!sessionId)
-            throw new common_1.NotFoundException('sessionId is required');
+        const normalizedSessionId = this.requireSessionId(sessionId);
         const cart = await this.prisma.cart.findFirst({
-            where: { storeId: store.id, sessionId, status: 'active' },
+            where: { storeId: store.id, sessionId: normalizedSessionId, status: 'active' },
             include: { items: { include: { product: true, variant: true } } },
             orderBy: { createdAt: 'desc' },
         });
         if (!cart) {
-            return { id: null, storeId: store.id, sessionId, items: [], total: 0 };
+            return {
+                id: null,
+                storeId: store.id,
+                sessionId: normalizedSessionId,
+                items: [],
+                total: 0,
+            };
         }
         const total = cart.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.qty, 0);
         return { ...cart, total };
     }
     async addCartItem(slug, data) {
         const store = await this.getActiveStore(slug);
+        const normalizedSessionId = this.requireSessionId(data.sessionId);
         const product = await this.prisma.product.findFirst({
             where: { id: data.productId, storeId: store.id, status: 'active' },
+            include: { variants: true },
         });
         if (!product)
             throw new common_1.NotFoundException('Product not found');
+        const variant = this.resolveVariantForCart(product.variants, data.variantId);
         const cart = (await this.prisma.cart.findFirst({
             where: {
                 storeId: store.id,
-                sessionId: data.sessionId,
+                sessionId: normalizedSessionId,
                 status: 'active',
             },
         })) ??
             (await this.prisma.cart.create({
-                data: { storeId: store.id, sessionId: data.sessionId },
+                data: { storeId: store.id, sessionId: normalizedSessionId },
             }));
-        const unitPrice = data.variantId
-            ? Number((await this.prisma.productVariant.findUnique({
-                where: { id: data.variantId },
-            }))?.price ?? product.price)
-            : Number(product.price);
         const existing = await this.prisma.cartItem.findFirst({
             where: {
                 cartId: cart.id,
                 productId: data.productId,
-                variantId: data.variantId ?? null,
+                variantId: variant?.id ?? null,
             },
         });
+        const nextQty = existing ? existing.qty + data.qty : data.qty;
+        this.assertStockAvailability(product, variant, nextQty);
+        const unitPrice = this.resolveEffectiveUnitPrice(product, variant);
         if (existing) {
             await this.prisma.cartItem.update({
                 where: { id: existing.id },
-                data: { qty: existing.qty + data.qty },
+                data: { qty: nextQty, unitPrice },
             });
         }
         else {
@@ -215,55 +226,95 @@ let PublicStoreService = class PublicStoreService {
                 data: {
                     cartId: cart.id,
                     productId: data.productId,
-                    variantId: data.variantId,
+                    variantId: variant?.id,
                     qty: data.qty,
                     unitPrice,
                 },
             });
         }
-        return this.getCart(slug, data.sessionId);
+        return this.getCart(slug, normalizedSessionId);
     }
     async updateCartItem(slug, sessionId, itemId, qty) {
         const store = await this.getActiveStore(slug);
+        const normalizedSessionId = this.requireSessionId(sessionId);
         const cart = await this.prisma.cart.findFirst({
-            where: { storeId: store.id, sessionId, status: 'active' },
+            where: { storeId: store.id, sessionId: normalizedSessionId, status: 'active' },
         });
         if (!cart)
             throw new common_1.NotFoundException('Cart not found');
-        await this.prisma.cartItem.updateMany({
+        const item = await this.prisma.cartItem.findFirst({
             where: { id: itemId, cartId: cart.id },
-            data: { qty },
+            include: { product: { include: { variants: true } }, variant: true },
         });
-        return this.getCart(slug, sessionId);
+        if (!item)
+            throw new common_1.NotFoundException('Cart item not found');
+        if (item.product.status !== 'active') {
+            throw new common_1.BadRequestException('Product is not available');
+        }
+        const variant = this.resolveVariantForCart(item.product.variants, item.variantId ?? undefined);
+        this.assertStockAvailability(item.product, variant, qty);
+        const unitPrice = this.resolveEffectiveUnitPrice(item.product, variant);
+        await this.prisma.cartItem.update({
+            where: { id: item.id },
+            data: { qty, unitPrice },
+        });
+        return this.getCart(slug, normalizedSessionId);
     }
     async deleteCartItem(slug, sessionId, itemId) {
         const store = await this.getActiveStore(slug);
+        const normalizedSessionId = this.requireSessionId(sessionId);
         const cart = await this.prisma.cart.findFirst({
-            where: { storeId: store.id, sessionId, status: 'active' },
+            where: { storeId: store.id, sessionId: normalizedSessionId, status: 'active' },
         });
         if (!cart)
             throw new common_1.NotFoundException('Cart not found');
-        await this.prisma.cartItem.deleteMany({
+        const deleted = await this.prisma.cartItem.deleteMany({
             where: { id: itemId, cartId: cart.id },
         });
-        return this.getCart(slug, sessionId);
+        if (!deleted.count)
+            throw new common_1.NotFoundException('Cart item not found');
+        return this.getCart(slug, normalizedSessionId);
     }
     async checkout(slug, data) {
         const store = await this.getActiveStore(slug);
+        const normalizedSessionId = this.requireSessionId(data.sessionId);
         const cart = await this.prisma.cart.findFirst({
-            where: { storeId: store.id, sessionId: data.sessionId, status: 'active' },
-            include: { items: { include: { product: true } } },
+            where: {
+                storeId: store.id,
+                sessionId: normalizedSessionId,
+                status: 'active',
+            },
+            include: {
+                items: {
+                    include: { product: { include: { variants: true } }, variant: true },
+                },
+            },
         });
         if (!cart || !cart.items.length)
             throw new common_1.NotFoundException('Cart is empty');
-        const subtotal = cart.items.reduce((sum, item) => sum + Number(item.unitPrice) * item.qty, 0);
+        const orderLines = cart.items.map((item) => {
+            if (item.product.status !== 'active') {
+                throw new common_1.BadRequestException(`Product "${item.product.title}" is not available`);
+            }
+            const variant = this.resolveVariantForCart(item.product.variants, item.variantId ?? undefined);
+            this.assertStockAvailability(item.product, variant, item.qty);
+            return {
+                productId: item.productId,
+                variantId: variant?.id ?? null,
+                qty: item.qty,
+                unitPrice: this.resolveEffectiveUnitPrice(item.product, variant),
+                productTitle: item.product.title,
+            };
+        });
+        const subtotal = orderLines.reduce((sum, line) => sum + line.unitPrice * line.qty, 0);
         const discount = await this.computeCouponDiscount(store.id, subtotal, data.couponCode);
         const taxableBase = Math.max(0, subtotal - discount);
         const tax = await this.computeTax(store.id, taxableBase, data.shippingAddress);
         const shipping = 0;
         const total = Math.max(0, taxableBase + tax + shipping);
         const code = `ORD-${Date.now().toString(36).toUpperCase()}`;
-        const order = await this.prisma.$transaction(async (tx) => {
+        const paymentMethod = this.normalizePaymentMethod(data.paymentMethod);
+        const checkoutResult = await this.prisma.$transaction(async (tx) => {
             const created = await tx.order.create({
                 data: {
                     storeId: store.id,
@@ -280,36 +331,67 @@ let PublicStoreService = class PublicStoreService {
                     customerPhone: data.customerPhone,
                     shippingAddress: data.shippingAddress,
                     items: {
-                        create: cart.items.map((item) => ({
-                            productId: item.productId,
-                            productNameSnapshot: item.product.title,
-                            qty: item.qty,
-                            unitPrice: item.unitPrice,
+                        create: orderLines.map((line) => ({
+                            productId: line.productId,
+                            productNameSnapshot: line.productTitle,
+                            qty: line.qty,
+                            unitPrice: line.unitPrice,
                         })),
                     },
                 },
                 include: { items: true },
             });
-            await tx.paymentTransaction.create({
+            const paymentTx = await tx.paymentTransaction.create({
                 data: {
                     storeId: store.id,
                     orderId: created.id,
-                    provider: 'manual',
+                    provider: paymentMethod,
                     amount: total,
                     currency: 'USD',
-                    status: 'pending',
-                    metadata: { source: 'public_checkout' },
+                    status: paymentMethod === 'cod' ? 'pending' : 'requires_confirmation',
+                    metadata: {
+                        source: 'public_checkout',
+                        paymentMethod,
+                        paymentMeta: (data.paymentMeta ?? {}),
+                    },
                 },
             });
-            for (const item of cart.items) {
+            for (const line of orderLines) {
                 const product = await tx.product.findUnique({
-                    where: { id: item.productId },
+                    where: { id: line.productId },
+                    include: { variants: true },
                 });
-                if (product) {
-                    await tx.product.update({
-                        where: { id: product.id },
-                        data: { stock: Math.max(0, product.stock - item.qty) },
-                    });
+                if (!product) {
+                    throw new common_1.BadRequestException(`Product not found for order line ${line.productId}`);
+                }
+                const variant = line.variantId
+                    ? product.variants.find((item) => item.id === line.variantId) ?? null
+                    : null;
+                this.assertStockAvailability(product, variant, line.qty);
+                const stockTrackingEnabled = product.stockTrackingEnabled;
+                if (stockTrackingEnabled !== false) {
+                    if (variant) {
+                        const updatedVariant = await tx.productVariant.updateMany({
+                            where: {
+                                id: variant.id,
+                                productId: product.id,
+                                stock: { gte: line.qty },
+                            },
+                            data: { stock: { decrement: line.qty } },
+                        });
+                        if (!updatedVariant.count) {
+                            throw new common_1.BadRequestException(`Insufficient stock for variant ${variant.optionValue}`);
+                        }
+                    }
+                    else {
+                        const updatedProduct = await tx.product.updateMany({
+                            where: { id: product.id, stock: { gte: line.qty } },
+                            data: { stock: { decrement: line.qty } },
+                        });
+                        if (!updatedProduct.count) {
+                            throw new common_1.BadRequestException(`Insufficient stock for product "${product.title}"`);
+                        }
+                    }
                 }
             }
             await tx.cart.update({
@@ -326,9 +408,56 @@ let PublicStoreService = class PublicStoreService {
                     data: { usedCount: { increment: 1 } },
                 });
             }
-            return created;
+            return { order: created, paymentTx };
         });
+        return {
+            ...checkoutResult.order,
+            payment: this.buildCheckoutPaymentResult(paymentMethod, checkoutResult.paymentTx.id),
+        };
+    }
+    async order(slug, orderCode, email) {
+        const store = await this.getActiveStore(slug);
+        const code = orderCode.trim();
+        const order = await this.prisma.order.findFirst({
+            where: {
+                storeId: store.id,
+                code,
+                ...(email ? { customerEmail: email.trim().toLowerCase() } : {}),
+            },
+            include: {
+                items: true,
+                shipment: true,
+                paymentTxns: { orderBy: { createdAt: 'desc' } },
+            },
+        });
+        if (!order)
+            throw new common_1.NotFoundException('Order not found');
         return order;
+    }
+    async policies(slug) {
+        const store = await this.getActiveStore(slug);
+        const [content, domain] = await Promise.all([
+            this.prisma.platformSetting.findUnique({
+                where: { key: `store_content:${store.id}` },
+            }),
+            this.prisma.platformSetting.findUnique({
+                where: { key: `domain:${store.id}` },
+            }),
+        ]);
+        const contentJson = this.asRecord(content?.valueJson);
+        const domainJson = this.asRecord(domain?.valueJson);
+        const domainName = this.asString(domainJson.domain, '') || `${store.slug}.1mis.io`;
+        const storeName = store.name;
+        const privacy = this.asString(contentJson.privacyPolicy, `This Privacy Policy describes how ${storeName} collects and uses customer data for orders, support, and fulfillment. For requests, contact support@${domainName}.`);
+        const terms = this.asString(contentJson.termsAndConditions, `By placing an order with ${storeName}, you agree to product pricing, shipping timelines, and return conditions published on this storefront.`);
+        return {
+            storeId: store.id,
+            storeName,
+            privacyPolicy: privacy,
+            termsAndConditions: terms,
+            updatedAt: content?.updatedAt.toISOString() ??
+                store.updatedAt.toISOString(),
+        };
     }
     async computeCouponDiscount(storeId, subtotal, couponCode) {
         if (!couponCode)
@@ -374,6 +503,94 @@ let PublicStoreService = class PublicStoreService {
         if (!matched)
             return 0;
         return taxableBase * Number(matched.rate);
+    }
+    requireSessionId(sessionId) {
+        const normalized = sessionId?.trim();
+        if (!normalized) {
+            throw new common_1.BadRequestException('sessionId is required');
+        }
+        return normalized;
+    }
+    resolveVariantForCart(variants, variantId) {
+        if (!variantId) {
+            if (variants.length) {
+                throw new common_1.BadRequestException('variantId is required for this product');
+            }
+            return null;
+        }
+        const variant = variants.find((item) => item.id === variantId);
+        if (!variant) {
+            throw new common_1.NotFoundException('Variant not found');
+        }
+        return variant;
+    }
+    assertStockAvailability(product, variant, qty) {
+        if (qty < 1) {
+            throw new common_1.BadRequestException('Quantity must be at least 1');
+        }
+        if (product.stockTrackingEnabled === false)
+            return;
+        const available = variant ? variant.stock : product.stock;
+        if (qty > available) {
+            if (variant) {
+                throw new common_1.BadRequestException(`Only ${available} item(s) left for variant ${variant.optionValue}`);
+            }
+            throw new common_1.BadRequestException(`Only ${available} item(s) left for product "${product.title}"`);
+        }
+    }
+    resolveEffectiveUnitPrice(product, variant) {
+        if (variant?.price != null) {
+            return Number(variant.price);
+        }
+        const hasActiveDiscount = product.discountedPrice != null &&
+            (!product.discountEndsAt || product.discountEndsAt > new Date());
+        if (hasActiveDiscount) {
+            return Number(product.discountedPrice);
+        }
+        return Number(product.price);
+    }
+    normalizePaymentMethod(paymentMethod) {
+        if (paymentMethod === 'stripe')
+            return 'stripe';
+        if (paymentMethod === 'sslcommerz')
+            return 'sslcommerz';
+        return 'cod';
+    }
+    buildCheckoutPaymentResult(paymentMethod, transactionId) {
+        if (paymentMethod === 'stripe') {
+            return {
+                transactionId,
+                provider: 'stripe',
+                status: 'requires_confirmation',
+                clientSecret: `pi_${transactionId}_secret_${Date.now().toString(36)}`,
+            };
+        }
+        if (paymentMethod === 'sslcommerz') {
+            return {
+                transactionId,
+                provider: 'sslcommerz',
+                status: 'requires_confirmation',
+                redirectUrl: `https://sandbox.sslcommerz.com/checkout/${transactionId}`,
+            };
+        }
+        return {
+            transactionId,
+            provider: 'cod',
+            status: 'pending',
+            instructions: 'Collect cash on delivery',
+        };
+    }
+    asRecord(value) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            return {};
+        }
+        return value;
+    }
+    asString(value, fallback) {
+        if (typeof value !== 'string')
+            return fallback;
+        const trimmed = value.trim();
+        return trimmed || fallback;
     }
     async getActiveStore(slug) {
         const store = await this.prisma.store.findFirst({

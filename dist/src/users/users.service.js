@@ -16,12 +16,13 @@ let UsersService = class UsersService {
     constructor(prisma) {
         this.prisma = prisma;
     }
-    me(userId) {
-        return this.prisma.user.findUnique({
+    async me(userId) {
+        const user = await this.prisma.user.findUnique({
             where: { id: userId },
             select: {
                 id: true,
                 name: true,
+                businessName: true,
                 email: true,
                 role: true,
                 isActive: true,
@@ -29,12 +30,39 @@ let UsersService = class UsersService {
                 updatedAt: true,
             },
         });
+        if (!user)
+            throw new common_1.NotFoundException('User not found');
+        return user;
     }
-    updateMe(userId, data) {
+    async updateMe(userId, data) {
+        const nextEmail = data.email?.trim().toLowerCase();
+        if (nextEmail) {
+            const existing = await this.prisma.user.findUnique({
+                where: { email: nextEmail },
+                select: { id: true },
+            });
+            if (existing && existing.id !== userId) {
+                throw new common_1.ConflictException('Email already in use');
+            }
+        }
+        const next = {
+            ...(data.name !== undefined ? { name: data.name } : {}),
+            ...(data.businessName !== undefined
+                ? { businessName: data.businessName }
+                : {}),
+            ...(nextEmail !== undefined ? { email: nextEmail } : {}),
+        };
         return this.prisma.user.update({
             where: { id: userId },
-            data,
-            select: { id: true, name: true, email: true, role: true, isActive: true },
+            data: next,
+            select: {
+                id: true,
+                name: true,
+                businessName: true,
+                email: true,
+                role: true,
+                isActive: true,
+            },
         });
     }
 };

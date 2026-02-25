@@ -31,6 +31,43 @@ __decorate([
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
 ], WebhookPayloadDto.prototype, "payload", void 0);
+class PaymentWebhookDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentWebhookDto.prototype, "eventType", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentWebhookDto.prototype, "transactionId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentWebhookDto.prototype, "providerRef", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentWebhookDto.prototype, "orderId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentWebhookDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentWebhookDto.prototype, "storeId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsObject)(),
+    __metadata("design:type", Object)
+], PaymentWebhookDto.prototype, "payload", void 0);
 let WebhooksController = class WebhooksController {
     constructor(webhooksService) {
         this.webhooksService = webhooksService;
@@ -40,6 +77,12 @@ let WebhooksController = class WebhooksController {
     }
     gtm(dto, secret) {
         return this.webhooksService.receive('gtm', dto, secret);
+    }
+    stripe(dto, secret) {
+        return this.webhooksService.receivePayment('stripe', dto, secret);
+    }
+    sslcommerz(dto, secret) {
+        return this.webhooksService.receivePayment('sslcommerz', dto, secret);
     }
 };
 exports.WebhooksController = WebhooksController;
@@ -59,6 +102,22 @@ __decorate([
     __metadata("design:paramtypes", [WebhookPayloadDto, String]),
     __metadata("design:returntype", void 0)
 ], WebhooksController.prototype, "gtm", null);
+__decorate([
+    (0, common_1.Post)('stripe'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Headers)('x-webhook-secret')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [PaymentWebhookDto, String]),
+    __metadata("design:returntype", void 0)
+], WebhooksController.prototype, "stripe", null);
+__decorate([
+    (0, common_1.Post)('sslcommerz'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Headers)('x-webhook-secret')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [PaymentWebhookDto, String]),
+    __metadata("design:returntype", void 0)
+], WebhooksController.prototype, "sslcommerz", null);
 exports.WebhooksController = WebhooksController = __decorate([
     (0, common_1.Controller)('api/webhooks'),
     __metadata("design:paramtypes", [webhooks_service_1.WebhooksService])

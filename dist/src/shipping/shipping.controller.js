@@ -35,9 +35,58 @@ __decorate([
     (0, class_validator_1.IsNumber)(),
     __metadata("design:type", Number)
 ], ShippingRateDto.prototype, "amount", void 0);
+class ShippingMethodsDto {
+}
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ShippingMethodsDto.prototype, "standard", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ShippingMethodsDto.prototype, "express", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ShippingMethodsDto.prototype, "pickup", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsBoolean)(),
+    __metadata("design:type", Boolean)
+], ShippingMethodsDto.prototype, "cod", void 0);
+class ShippingChargesDto {
+}
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], ShippingChargesDto.prototype, "flatCharge", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], ShippingChargesDto.prototype, "expressCharge", void 0);
 class ShippingConfigDto {
 }
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateNested)(),
+    (0, class_transformer_1.Type)(() => ShippingMethodsDto),
+    __metadata("design:type", ShippingMethodsDto)
+], ShippingConfigDto.prototype, "methods", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.ValidateNested)(),
+    (0, class_transformer_1.Type)(() => ShippingChargesDto),
+    __metadata("design:type", ShippingChargesDto)
+], ShippingConfigDto.prototype, "charges", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsArray)(),
     (0, class_validator_1.ValidateNested)({ each: true }),
     (0, class_transformer_1.Type)(() => ShippingRateDto),
@@ -73,6 +122,48 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], TrackingStatusDto.prototype, "status", void 0);
+class ShippingListQueryDto {
+}
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], ShippingListQueryDto.prototype, "page", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(200),
+    __metadata("design:type", Number)
+], ShippingListQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ShippingListQueryDto.prototype, "q", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ShippingListQueryDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ShippingListQueryDto.prototype, "sort", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], ShippingListQueryDto.prototype, "from", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], ShippingListQueryDto.prototype, "to", void 0);
 let ShippingController = class ShippingController {
     constructor(shippingService) {
         this.shippingService = shippingService;
@@ -89,8 +180,14 @@ let ShippingController = class ShippingController {
     updateTracking(storeId, shipmentId, dto, user) {
         return this.shippingService.updateTracking(storeId, shipmentId, dto.status, user);
     }
-    shipments(storeId) {
-        return this.shippingService.shipments(storeId);
+    shipments(storeId, query) {
+        return this.shippingService.shipments(storeId, query);
+    }
+    orders(storeId, query) {
+        return this.shippingService.orders(storeId, query);
+    }
+    shipment(storeId, shipmentId) {
+        return this.shippingService.shipment(storeId, shipmentId);
     }
 };
 exports.ShippingController = ShippingController;
@@ -132,10 +229,27 @@ __decorate([
 __decorate([
     (0, common_1.Get)('shipments'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, ShippingListQueryDto]),
     __metadata("design:returntype", void 0)
 ], ShippingController.prototype, "shipments", null);
+__decorate([
+    (0, common_1.Get)('orders'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, ShippingListQueryDto]),
+    __metadata("design:returntype", void 0)
+], ShippingController.prototype, "orders", null);
+__decorate([
+    (0, common_1.Get)('shipments/:shipmentId'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('shipmentId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], ShippingController.prototype, "shipment", null);
 exports.ShippingController = ShippingController = __decorate([
     (0, common_1.Controller)('api/stores/:id/shipping'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, store_access_guard_1.StoreAccessGuard),

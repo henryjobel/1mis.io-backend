@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationsController = void 0;
 const common_1 = require("@nestjs/common");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
@@ -39,6 +40,48 @@ __decorate([
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
 ], SendNotificationDto.prototype, "payload", void 0);
+class NotificationLogsQueryDto {
+}
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], NotificationLogsQueryDto.prototype, "page", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(200),
+    __metadata("design:type", Number)
+], NotificationLogsQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], NotificationLogsQueryDto.prototype, "q", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], NotificationLogsQueryDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], NotificationLogsQueryDto.prototype, "from", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], NotificationLogsQueryDto.prototype, "to", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], NotificationLogsQueryDto.prototype, "sort", void 0);
 let NotificationsController = class NotificationsController {
     constructor(notificationsService) {
         this.notificationsService = notificationsService;
@@ -46,8 +89,8 @@ let NotificationsController = class NotificationsController {
     send(storeId, dto, user) {
         return this.notificationsService.send(storeId, dto, user);
     }
-    logs(storeId) {
-        return this.notificationsService.logs(storeId);
+    logs(storeId, query) {
+        return this.notificationsService.logs(storeId, query);
     }
 };
 exports.NotificationsController = NotificationsController;
@@ -63,8 +106,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('logs'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, NotificationLogsQueryDto]),
     __metadata("design:returntype", void 0)
 ], NotificationsController.prototype, "logs", null);
 exports.NotificationsController = NotificationsController = __decorate([

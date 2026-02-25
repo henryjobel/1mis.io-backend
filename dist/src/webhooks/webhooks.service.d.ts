@@ -13,4 +13,23 @@ export declare class WebhooksService {
     }, secret?: string): Promise<{
         accepted: boolean;
     }>;
+    receivePayment(provider: 'stripe' | 'sslcommerz', data: {
+        eventType?: string;
+        transactionId?: string;
+        providerRef?: string;
+        orderId?: string;
+        status?: string;
+        storeId?: string;
+        payload?: Record<string, unknown>;
+    }, secret?: string): Promise<{
+        accepted: boolean;
+        processed: boolean;
+        provider: "stripe" | "sslcommerz";
+        status: string;
+        transactionId: string | null;
+        orderId: string | null;
+    }>;
+    private findPaymentTransaction;
+    private normalizeWebhookStatus;
+    private toOrderStatus;
 }

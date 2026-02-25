@@ -92,8 +92,8 @@ export declare class PromotionsService {
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        country: string | null;
         region: string | null;
+        country: string | null;
         rate: import("@prisma/client/runtime/library").Decimal;
         isDefault: boolean;
     }[]>;
@@ -114,8 +114,8 @@ export declare class PromotionsService {
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        country: string | null;
         region: string | null;
+        country: string | null;
         rate: import("@prisma/client/runtime/library").Decimal;
         isDefault: boolean;
     }>;
@@ -129,8 +129,8 @@ export declare class PromotionsService {
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        country: string | null;
         region: string | null;
+        country: string | null;
         rate: import("@prisma/client/runtime/library").Decimal;
         isDefault: boolean;
     }>;
@@ -144,8 +144,8 @@ export declare class PromotionsService {
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
-        country: string | null;
         region: string | null;
+        country: string | null;
         rate: import("@prisma/client/runtime/library").Decimal;
         isDefault: boolean;
     }>;

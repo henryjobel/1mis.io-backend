@@ -46,6 +46,155 @@ let WebhooksService = class WebhooksService {
         });
         return { accepted: valid };
     }
+    async receivePayment(provider, data, secret) {
+        const configuredSecret = this.configService.get('WEBHOOK_SECRET');
+        const valid = !configuredSecret || configuredSecret === secret;
+        const status = this.normalizeWebhookStatus(data.status ?? data.eventType);
+        const payload = data.payload ?? {};
+        const eventType = String(data.eventType ?? '').trim() || status;
+        const baseKey = `webhook:${provider}:${Date.now()}:${Math.random().toString(16).slice(2, 10)}`;
+        const targetTx = valid
+            ? await this.findPaymentTransaction(provider, data)
+            : null;
+        let updatedTransactionId = null;
+        let updatedOrderId = null;
+        let processed = false;
+        if (targetTx && status) {
+            const nextMetadata = {
+                ...targetTx.metadata,
+                webhook: {
+                    provider,
+                    status,
+                    eventType,
+                    receivedAt: new Date().toISOString(),
+                    payload,
+                },
+            };
+            const updatedTx = await this.prisma.paymentTransaction.update({
+                where: { id: targetTx.id },
+                data: {
+                    status,
+                    providerRef: data.providerRef ?? targetTx.providerRef,
+                    metadata: nextMetadata,
+                },
+            });
+            updatedTransactionId = updatedTx.id;
+            updatedOrderId = updatedTx.orderId;
+            processed = true;
+            if (updatedTx.orderId) {
+                const orderStatus = this.toOrderStatus(status);
+                if (orderStatus) {
+                    await this.prisma.order.update({
+                        where: { id: updatedTx.orderId },
+                        data: { status: orderStatus },
+                    });
+                }
+            }
+        }
+        await this.prisma.platformSetting.create({
+            data: {
+                key: baseKey,
+                valueJson: {
+                    provider,
+                    valid,
+                    processed,
+                    eventType,
+                    status,
+                    storeId: data.storeId ?? targetTx?.storeId ?? null,
+                    transactionId: updatedTransactionId,
+                    orderId: updatedOrderId,
+                    payload,
+                    receivedAt: new Date().toISOString(),
+                },
+            },
+        });
+        await this.auditService.log({
+            role: client_1.Role.support,
+            action: `webhook.${provider}.received`,
+            entityType: 'PlatformSetting',
+            entityId: baseKey,
+            metaJson: {
+                valid,
+                processed,
+                transactionId: updatedTransactionId,
+            },
+        });
+        return {
+            accepted: valid,
+            processed,
+            provider,
+            status,
+            transactionId: updatedTransactionId,
+            orderId: updatedOrderId,
+        };
+    }
+    async findPaymentTransaction(provider, data) {
+        if (data.transactionId) {
+            return this.prisma.paymentTransaction.findFirst({
+                where: {
+                    id: data.transactionId,
+                    provider,
+                    ...(data.storeId ? { storeId: data.storeId } : {}),
+                },
+            });
+        }
+        if (data.providerRef) {
+            return this.prisma.paymentTransaction.findFirst({
+                where: {
+                    providerRef: data.providerRef,
+                    provider,
+                    ...(data.storeId ? { storeId: data.storeId } : {}),
+                },
+            });
+        }
+        if (data.orderId) {
+            return this.prisma.paymentTransaction.findFirst({
+                where: {
+                    orderId: data.orderId,
+                    provider,
+                    ...(data.storeId ? { storeId: data.storeId } : {}),
+                },
+                orderBy: { createdAt: 'desc' },
+            });
+        }
+        return null;
+    }
+    normalizeWebhookStatus(raw) {
+        const value = String(raw ?? '').trim().toLowerCase();
+        if (!value)
+            return 'pending';
+        if (value === 'succeeded' ||
+            value === 'paid' ||
+            value === 'success' ||
+            value === 'completed' ||
+            value === 'captured') {
+            return 'succeeded';
+        }
+        if (value === 'processing' || value === 'requires_capture') {
+            return 'processing';
+        }
+        if (value === 'failed' ||
+            value === 'cancelled' ||
+            value === 'canceled' ||
+            value === 'declined' ||
+            value === 'expired') {
+            return 'failed';
+        }
+        if (value === 'refunded')
+            return 'refunded';
+        if (value === 'pending')
+            return 'pending';
+        return 'pending';
+    }
+    toOrderStatus(paymentStatus) {
+        if (paymentStatus === 'succeeded')
+            return client_1.OrderStatus.paid;
+        if (paymentStatus === 'refunded')
+            return client_1.OrderStatus.cancelled;
+        if (paymentStatus === 'failed')
+            return client_1.OrderStatus.cancelled;
+        return null;
+    }
 };
 exports.WebhooksService = WebhooksService;
 exports.WebhooksService = WebhooksService = __decorate([

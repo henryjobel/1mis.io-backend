@@ -86,6 +86,48 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], PaymentConfigDto.prototype, "key", void 0);
+class PaymentTransactionListQueryDto {
+}
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], PaymentTransactionListQueryDto.prototype, "page", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(200),
+    __metadata("design:type", Number)
+], PaymentTransactionListQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentTransactionListQueryDto.prototype, "q", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentTransactionListQueryDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], PaymentTransactionListQueryDto.prototype, "from", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], PaymentTransactionListQueryDto.prototype, "to", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], PaymentTransactionListQueryDto.prototype, "sort", void 0);
 let PaymentsController = class PaymentsController {
     constructor(paymentsService) {
         this.paymentsService = paymentsService;
@@ -105,8 +147,11 @@ let PaymentsController = class PaymentsController {
     refund(storeId, dto, user) {
         return this.paymentsService.refund(storeId, dto, user);
     }
-    transactions(storeId) {
-        return this.paymentsService.transactions(storeId);
+    transactions(storeId, query) {
+        return this.paymentsService.transactions(storeId, query);
+    }
+    transaction(storeId, transactionId) {
+        return this.paymentsService.transaction(storeId, transactionId);
     }
 };
 exports.PaymentsController = PaymentsController;
@@ -156,10 +201,19 @@ __decorate([
 __decorate([
     (0, common_1.Get)('transactions'),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, PaymentTransactionListQueryDto]),
     __metadata("design:returntype", void 0)
 ], PaymentsController.prototype, "transactions", null);
+__decorate([
+    (0, common_1.Get)('transactions/:transactionId'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('transactionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], PaymentsController.prototype, "transaction", null);
 exports.PaymentsController = PaymentsController = __decorate([
     (0, common_1.Controller)('api/stores/:id/payments'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, store_access_guard_1.StoreAccessGuard),

@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MediaController = void 0;
 const common_1 = require("@nestjs/common");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
@@ -34,6 +35,48 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateMediaDto.prototype, "altText", void 0);
+class CreateMediaUploadSessionDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateMediaUploadSessionDto.prototype, "type", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateMediaUploadSessionDto.prototype, "filename", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateMediaUploadSessionDto.prototype, "mimeType", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(5 * 1024 * 1024),
+    __metadata("design:type", Number)
+], CreateMediaUploadSessionDto.prototype, "sizeBytes", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateMediaUploadSessionDto.prototype, "altText", void 0);
+class CompleteMediaUploadDto {
+}
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CompleteMediaUploadDto.prototype, "uploadId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsUrl)(),
+    __metadata("design:type", String)
+], CompleteMediaUploadDto.prototype, "url", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CompleteMediaUploadDto.prototype, "altText", void 0);
 let MediaController = class MediaController {
     constructor(mediaService) {
         this.mediaService = mediaService;
@@ -43,6 +86,15 @@ let MediaController = class MediaController {
     }
     upload(storeId, dto, user) {
         return this.mediaService.upload(storeId, dto, user);
+    }
+    createUploadSession(storeId, dto, user) {
+        return this.mediaService.createUploadSession(storeId, dto, user);
+    }
+    completeUpload(storeId, dto, user) {
+        return this.mediaService.completeUpload(storeId, dto, user);
+    }
+    uploadStatus(storeId, uploadId) {
+        return this.mediaService.uploadStatus(storeId, uploadId);
     }
     remove(storeId, assetId, user) {
         return this.mediaService.remove(storeId, assetId, user);
@@ -65,6 +117,32 @@ __decorate([
     __metadata("design:paramtypes", [String, CreateMediaDto, Object]),
     __metadata("design:returntype", void 0)
 ], MediaController.prototype, "upload", null);
+__decorate([
+    (0, common_1.Post)('presign'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, CreateMediaUploadSessionDto, Object]),
+    __metadata("design:returntype", void 0)
+], MediaController.prototype, "createUploadSession", null);
+__decorate([
+    (0, common_1.Post)('complete'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, CompleteMediaUploadDto, Object]),
+    __metadata("design:returntype", void 0)
+], MediaController.prototype, "completeUpload", null);
+__decorate([
+    (0, common_1.Get)('uploads/:uploadId/status'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('uploadId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], MediaController.prototype, "uploadStatus", null);
 __decorate([
     (0, common_1.Delete)(':assetId'),
     __param(0, (0, common_1.Param)('id')),

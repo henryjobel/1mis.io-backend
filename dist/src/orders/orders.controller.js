@@ -14,7 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OrdersController = void 0;
 const common_1 = require("@nestjs/common");
-const client_1 = require("@prisma/client");
+const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
@@ -23,15 +23,60 @@ const orders_service_1 = require("./orders.service");
 class UpdateOrderStatusDto {
 }
 __decorate([
-    (0, class_validator_1.IsEnum)(client_1.OrderStatus),
+    (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateOrderStatusDto.prototype, "status", void 0);
+class OrdersListQueryDto {
+}
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    __metadata("design:type", Number)
+], OrdersListQueryDto.prototype, "page", void 0);
+__decorate([
+    (0, class_transformer_1.Type)(() => Number),
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Max)(200),
+    __metadata("design:type", Number)
+], OrdersListQueryDto.prototype, "limit", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], OrdersListQueryDto.prototype, "q", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], OrdersListQueryDto.prototype, "status", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], OrdersListQueryDto.prototype, "from", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsISO8601)(),
+    __metadata("design:type", String)
+], OrdersListQueryDto.prototype, "to", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], OrdersListQueryDto.prototype, "sort", void 0);
 let OrdersController = class OrdersController {
     constructor(ordersService) {
         this.ordersService = ordersService;
     }
-    list(storeId) {
-        return this.ordersService.list(storeId);
+    list(storeId, query) {
+        return this.ordersService.list(storeId, query);
+    }
+    findOne(storeId, orderId) {
+        return this.ordersService.findOne(storeId, orderId);
     }
     updateStatus(storeId, orderId, dto, user) {
         return this.ordersService.updateStatus(storeId, orderId, dto.status, user);
@@ -41,10 +86,19 @@ exports.OrdersController = OrdersController;
 __decorate([
     (0, common_1.Get)(),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [String, OrdersListQueryDto]),
     __metadata("design:returntype", void 0)
 ], OrdersController.prototype, "list", null);
+__decorate([
+    (0, common_1.Get)(':orderId'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('orderId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", void 0)
+], OrdersController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':orderId/status'),
     __param(0, (0, common_1.Param)('id')),

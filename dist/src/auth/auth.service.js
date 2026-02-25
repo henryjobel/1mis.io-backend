@@ -36,6 +36,7 @@ let AuthService = class AuthService {
         const user = await this.prisma.user.create({
             data: {
                 name: dto.name,
+                businessName: dto.businessName?.trim() || null,
                 email: dto.email,
                 passwordHash,
                 role: client_1.Role.owner,
@@ -61,6 +62,8 @@ let AuthService = class AuthService {
         });
         if (!user)
             throw new common_1.UnauthorizedException('Invalid credentials');
+        if (!user.isActive)
+            throw new common_1.UnauthorizedException('Account is disabled');
         const ok = await (0, bcrypt_1.compare)(dto.password, user.passwordHash);
         if (!ok)
             throw new common_1.UnauthorizedException('Invalid credentials');
@@ -168,6 +171,7 @@ let AuthService = class AuthService {
             select: {
                 id: true,
                 name: true,
+                businessName: true,
                 email: true,
                 role: true,
                 isActive: true,

@@ -1,13 +1,29 @@
 import { CustomersService } from './customers.service';
+declare class CustomerListQueryDto {
+    page?: number;
+    limit?: number;
+    q?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    sort?: string;
+}
 export declare class CustomersController {
     private readonly customersService;
     constructor(customersService: CustomersService);
-    list(storeId: string): Promise<{
-        customerEmail: string;
-        customerName: string;
-        orders: number;
-        totalSpent: import("@prisma/client/runtime/library").Decimal | null;
-    }[]>;
+    list(storeId: string, query: CustomerListQueryDto): Promise<{
+        items: {
+            customerEmail: string;
+            customerName: string;
+            orders: number;
+            totalSpent: number;
+            lastOrderAt: string;
+        }[];
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    }>;
     orders(storeId: string, email: string): import(".prisma/client").Prisma.PrismaPromise<({
         shipment: {
             id: string;
@@ -38,11 +54,11 @@ export declare class CustomersController {
             updatedAt: Date;
             storeId: string;
             status: string;
+            currency: string;
             orderId: string | null;
             provider: string;
             providerRef: string | null;
             amount: import("@prisma/client/runtime/library").Decimal;
-            currency: string;
             metadata: import("@prisma/client/runtime/library").JsonValue | null;
         }[];
     } & {
@@ -53,8 +69,8 @@ export declare class CustomersController {
         status: import(".prisma/client").$Enums.OrderStatus;
         code: string;
         total: import("@prisma/client/runtime/library").Decimal;
-        customerName: string;
         customerEmail: string;
+        customerName: string;
         customerPhone: string | null;
         shippingAddress: import("@prisma/client/runtime/library").JsonValue | null;
         subtotal: import("@prisma/client/runtime/library").Decimal | null;
@@ -64,3 +80,4 @@ export declare class CustomersController {
         couponCode: string | null;
     })[]>;
 }
+export {};

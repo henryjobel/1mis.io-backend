@@ -74,6 +74,12 @@ class UpdateLifecycleDto {
   notes?: string;
 }
 
+class ThemeSyncDto {
+  @IsOptional()
+  @IsISO8601()
+  at?: string;
+}
+
 class InviteAdminDto {
   @IsString()
   name!: string;
@@ -206,6 +212,17 @@ class UpdateAdminStatusDto {
   isActive!: boolean;
 }
 
+class SetMaintenanceModeDto {
+  @IsBoolean()
+  enabled!: boolean;
+}
+
+class UpdateAiHardCapDto {
+  @IsInt()
+  @Min(1)
+  hardCapUsd!: number;
+}
+
 class OverviewMetricsQueryDto {
   @IsOptional()
   @IsISO8601()
@@ -289,6 +306,16 @@ export class SuperAdminController {
     return this.superAdminService.updateLifecycle(storeId, dto, user);
   }
 
+  @Post('lifecycle/:storeId/theme-sync')
+  @Roles(Role.super_admin, Role.ops)
+  markThemeSynced(
+    @Param('storeId') storeId: string,
+    @Body() dto: ThemeSyncDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.markThemeSynced(storeId, dto.at, user);
+  }
+
   @Get('admins')
   @Roles(Role.super_admin)
   admins() {
@@ -330,6 +357,12 @@ export class SuperAdminController {
   @Roles(Role.super_admin, Role.finance)
   subscriptions() {
     return this.superAdminService.subscriptions();
+  }
+
+  @Post('subscriptions/sync-pricing')
+  @Roles(Role.super_admin, Role.finance)
+  syncSubscriptionPricing(@CurrentUser() user: RequestUser) {
+    return this.superAdminService.syncSubscriptionPricing(user);
   }
 
   @Get('subscriptions/:storeId')
@@ -394,6 +427,15 @@ export class SuperAdminController {
     return this.superAdminService.updatePaymentOps(storeId, dto, user);
   }
 
+  @Post('payment-ops/:storeId/reset-failures')
+  @Roles(Role.super_admin, Role.finance, Role.ops)
+  resetPaymentFailures(
+    @Param('storeId') storeId: string,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.resetPaymentFailures(storeId, user);
+  }
+
   @Get('tickets')
   @Roles(Role.super_admin, Role.support)
   tickets() {
@@ -447,10 +489,25 @@ export class SuperAdminController {
     return this.superAdminService.updateSecurityIncident(id, dto, user);
   }
 
+  @Post('security/rotate-keys')
+  @Roles(Role.super_admin)
+  rotatePlatformKeys(@CurrentUser() user: RequestUser) {
+    return this.superAdminService.rotatePlatformKeys(user);
+  }
+
   @Get('health')
   @Roles(Role.super_admin, Role.ops)
   health() {
     return this.superAdminService.health();
+  }
+
+  @Post('health/maintenance')
+  @Roles(Role.super_admin, Role.ops)
+  setMaintenanceMode(
+    @Body() dto: SetMaintenanceModeDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.setMaintenanceMode(dto.enabled, user);
   }
 
   @Post('health/:service/restart')
@@ -463,6 +520,15 @@ export class SuperAdminController {
   @Roles(Role.super_admin, Role.ops)
   aiUsage() {
     return this.superAdminService.aiUsage();
+  }
+
+  @Patch('ai-usage/hard-cap')
+  @Roles(Role.super_admin, Role.ops)
+  updateAiHardCap(
+    @Body() dto: UpdateAiHardCapDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.superAdminService.updateAiHardCap(dto.hardCapUsd, user);
   }
 
   @Get('flags')

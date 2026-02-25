@@ -1,14 +1,30 @@
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 export declare class CustomersService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    list(storeId: string): Promise<{
-        customerEmail: string;
-        customerName: string;
-        orders: number;
-        totalSpent: import("@prisma/client/runtime/library").Decimal | null;
-    }[]>;
-    orders(storeId: string, email: string): import(".prisma/client").Prisma.PrismaPromise<({
+    list(storeId: string, options?: {
+        page?: number;
+        limit?: number;
+        q?: string;
+        status?: string;
+        from?: string;
+        to?: string;
+        sort?: string;
+    }): Promise<{
+        items: {
+            customerEmail: string;
+            customerName: string;
+            orders: number;
+            totalSpent: number;
+            lastOrderAt: string;
+        }[];
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    }>;
+    orders(storeId: string, email: string): Prisma.PrismaPromise<({
         shipment: {
             id: string;
             createdAt: Date;
@@ -30,7 +46,7 @@ export declare class CustomersService {
             orderId: string;
             productNameSnapshot: string;
             qty: number;
-            unitPrice: import("@prisma/client/runtime/library").Decimal;
+            unitPrice: Prisma.Decimal;
         }[];
         paymentTxns: {
             id: string;
@@ -38,12 +54,12 @@ export declare class CustomersService {
             updatedAt: Date;
             storeId: string;
             status: string;
+            currency: string;
             orderId: string | null;
             provider: string;
             providerRef: string | null;
-            amount: import("@prisma/client/runtime/library").Decimal;
-            currency: string;
-            metadata: import("@prisma/client/runtime/library").JsonValue | null;
+            amount: Prisma.Decimal;
+            metadata: Prisma.JsonValue | null;
         }[];
     } & {
         id: string;
@@ -52,15 +68,17 @@ export declare class CustomersService {
         storeId: string;
         status: import(".prisma/client").$Enums.OrderStatus;
         code: string;
-        total: import("@prisma/client/runtime/library").Decimal;
-        customerName: string;
+        total: Prisma.Decimal;
         customerEmail: string;
+        customerName: string;
         customerPhone: string | null;
-        shippingAddress: import("@prisma/client/runtime/library").JsonValue | null;
-        subtotal: import("@prisma/client/runtime/library").Decimal | null;
-        discountTotal: import("@prisma/client/runtime/library").Decimal | null;
-        taxTotal: import("@prisma/client/runtime/library").Decimal | null;
-        shippingTotal: import("@prisma/client/runtime/library").Decimal | null;
+        shippingAddress: Prisma.JsonValue | null;
+        subtotal: Prisma.Decimal | null;
+        discountTotal: Prisma.Decimal | null;
+        taxTotal: Prisma.Decimal | null;
+        shippingTotal: Prisma.Decimal | null;
         couponCode: string | null;
     })[]>;
+    private parseOrderStatus;
+    private compareCustomers;
 }

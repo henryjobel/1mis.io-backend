@@ -24,15 +24,30 @@ export declare class NotificationsService {
         recipient: string;
         templateKey: string | null;
     }>;
-    logs(storeId: string): Prisma.PrismaPromise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        storeId: string;
-        status: string;
-        payload: Prisma.JsonValue | null;
-        channel: string;
-        recipient: string;
-        templateKey: string | null;
-    }[]>;
+    logs(storeId: string, options?: {
+        page?: number;
+        limit?: number;
+        q?: string;
+        status?: string;
+        from?: string;
+        to?: string;
+        sort?: string;
+    }): Promise<{
+        items: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: string;
+            payload: Prisma.JsonValue | null;
+            channel: string;
+            recipient: string;
+            templateKey: string | null;
+        }[];
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    }>;
+    private logSort;
 }

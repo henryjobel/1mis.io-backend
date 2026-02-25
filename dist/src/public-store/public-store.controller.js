@@ -75,6 +75,16 @@ __decorate([
     (0, class_validator_1.IsObject)(),
     __metadata("design:type", Object)
 ], CheckoutDto.prototype, "shippingAddress", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsIn)(['cod', 'stripe', 'sslcommerz']),
+    __metadata("design:type", String)
+], CheckoutDto.prototype, "paymentMethod", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsObject)(),
+    __metadata("design:type", Object)
+], CheckoutDto.prototype, "paymentMeta", void 0);
 class CreateReviewDto {
 }
 __decorate([
@@ -153,6 +163,12 @@ let PublicStoreController = class PublicStoreController {
     }
     checkout(slug, dto) {
         return this.publicStoreService.checkout(slug, dto);
+    }
+    order(slug, orderCode, email) {
+        return this.publicStoreService.order(slug, orderCode, email);
+    }
+    policies(slug) {
+        return this.publicStoreService.policies(slug);
     }
 };
 exports.PublicStoreController = PublicStoreController;
@@ -265,6 +281,22 @@ __decorate([
     __metadata("design:paramtypes", [String, CheckoutDto]),
     __metadata("design:returntype", void 0)
 ], PublicStoreController.prototype, "checkout", null);
+__decorate([
+    (0, common_1.Get)('orders/:orderCode'),
+    __param(0, (0, common_1.Param)('slug')),
+    __param(1, (0, common_1.Param)('orderCode')),
+    __param(2, (0, common_1.Query)('email')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:returntype", void 0)
+], PublicStoreController.prototype, "order", null);
+__decorate([
+    (0, common_1.Get)('policies'),
+    __param(0, (0, common_1.Param)('slug')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], PublicStoreController.prototype, "policies", null);
 exports.PublicStoreController = PublicStoreController = __decorate([
     (0, common_1.Controller)('api/public/stores/:slug'),
     __metadata("design:paramtypes", [public_store_service_1.PublicStoreService])

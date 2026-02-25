@@ -16,4 +16,15 @@ export declare class AnalyticsController {
         totalQty: number;
         revenueApprox: number | import("@prisma/client/runtime/library").Decimal;
     }[]>;
+    dashboard(storeId: string, from?: string, to?: string): Promise<{
+        from: string | null;
+        to: string | null;
+        revenue: number | import("@prisma/client/runtime/library").Decimal;
+        orders: number;
+        averageOrderValue: number | import("@prisma/client/runtime/library").Decimal;
+        customers: number;
+        products: number;
+        lowStockAlerts: number;
+        conversionRatePct: number;
+    }>;
 }

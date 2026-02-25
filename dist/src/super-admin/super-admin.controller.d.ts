@@ -4,11 +4,21 @@ import { SuperAdminService } from './super-admin.service';
 declare class UpdateStoreStatusDto {
     status: StoreStatus;
 }
+declare class CreateStoreDto {
+    name: string;
+    ownerEmail: string;
+    plan?: 'Starter' | 'Growth' | 'Scale';
+    region?: string;
+    status?: 'active' | 'trial' | 'suspended';
+}
 declare class UpdateLifecycleDto {
     publishStatus?: string;
     domainStatus?: string;
     sslStatus?: string;
     notes?: string;
+}
+declare class ThemeSyncDto {
+    at?: string;
 }
 declare class InviteAdminDto {
     name: string;
@@ -25,6 +35,20 @@ declare class UpdateTicketDto {
     status: 'open' | 'in_progress' | 'resolved';
     note?: string;
     priority?: 'low' | 'medium' | 'high';
+}
+declare class CreateIncidentDto {
+    title: string;
+    level: 'info' | 'warning' | 'critical';
+    status?: 'monitoring' | 'resolved';
+    startedAt?: string;
+    note?: string;
+}
+declare class UpdateIncidentDto {
+    title?: string;
+    level?: 'info' | 'warning' | 'critical';
+    status?: 'monitoring' | 'resolved';
+    note?: string;
+    resolutionNote?: string;
 }
 declare class UpdateFlagDto {
     enabled: boolean;
@@ -46,9 +70,18 @@ declare class SubscriptionUpdateDto {
 declare class UpdateAdminStatusDto {
     isActive: boolean;
 }
+declare class SetMaintenanceModeDto {
+    enabled: boolean;
+}
+declare class UpdateAiHardCapDto {
+    hardCapUsd: number;
+}
 declare class OverviewMetricsQueryDto {
     from?: string;
     to?: string;
+}
+declare class AuditLogQueryDto {
+    format?: 'dashboard';
 }
 export declare class SuperAdminController {
     private readonly superAdminService;
@@ -67,70 +100,101 @@ export declare class SuperAdminController {
         activeStores: number;
         failedPayments: number;
     }>;
-    stores(): import(".prisma/client").Prisma.PrismaPromise<{
+    stores(): Promise<{
         id: string;
         name: string;
+        ownerEmail: string;
+        plan: "Starter" | "Growth" | "Scale";
+        region: string;
+        gmvUsd: number;
+        status: "active" | "suspended" | "trial";
         createdAt: Date;
-        updatedAt: Date;
-        ownerId: string;
-        slug: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
-        themePreset: string | null;
-        publishedAt: Date | null;
     }[]>;
+    createStore(dto: CreateStoreDto, user: RequestUser): Promise<{
+        id: string;
+        name: string;
+        ownerEmail: string;
+        plan: "Starter" | "Growth" | "Scale";
+        region: string;
+        gmvUsd: number;
+        status: "active" | "suspended" | "trial";
+        createdAt: Date;
+    }>;
     updateStoreStatus(id: string, dto: UpdateStoreStatusDto, user: RequestUser): Promise<{
         id: string;
         name: string;
+        ownerEmail: string;
+        status: "active" | "suspended" | "trial";
         createdAt: Date;
-        updatedAt: Date;
-        ownerId: string;
-        slug: string;
-        status: import(".prisma/client").$Enums.StoreStatus;
-        themePreset: string | null;
-        publishedAt: Date | null;
     }>;
-    lifecycle(): import(".prisma/client").Prisma.GetStoreGroupByPayload<{
-        by: "status"[];
-        _count: true;
+    deleteStore(id: string, user: RequestUser): Promise<{
+        deleted: boolean;
+        id: string;
+        name: string;
     }>;
+    lifecycle(): Promise<{
+        storeId: string;
+        storeName: string;
+        publishStatus: string;
+        domain: string;
+        domainStatus: string;
+        sslStatus: string;
+        lastPublishedAt: string;
+        lastThemeUpdateAt: string;
+    }[]>;
     lifecycleByStore(storeId: string): Promise<{
-        store: {
-            id: string;
-            name: string;
-            createdAt: Date;
-            updatedAt: Date;
-            ownerId: string;
-            slug: string;
-            status: import(".prisma/client").$Enums.StoreStatus;
-            themePreset: string | null;
-            publishedAt: Date | null;
-        } | null;
-        lifecycleConfig: string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray | null;
+        storeId: string;
+        storeName: string;
+        publishStatus: string;
+        domain: string;
+        domainStatus: string;
+        sslStatus: string;
+        lastPublishedAt: string;
+        lastThemeUpdateAt: string;
     }>;
     updateLifecycle(storeId: string, dto: UpdateLifecycleDto, user: RequestUser): Promise<{
-        updatedAt: Date;
-        key: string;
-        valueJson: import("@prisma/client/runtime/library").JsonValue;
+        storeId: string;
+        storeName: string;
+        publishStatus: string;
+        domain: string;
+        domainStatus: string;
+        sslStatus: string;
+        lastPublishedAt: string;
+        lastThemeUpdateAt: string;
     }>;
-    admins(): import(".prisma/client").Prisma.PrismaPromise<{
+    markThemeSynced(storeId: string, dto: ThemeSyncDto, user: RequestUser): Promise<{
+        storeId: string;
+        storeName: string;
+        publishStatus: string;
+        domain: string;
+        domainStatus: string;
+        sslStatus: string;
+        lastPublishedAt: string;
+        lastThemeUpdateAt: string;
+    }>;
+    admins(): Promise<{
         id: string;
-        email: string;
         name: string;
+        email: string;
         role: import(".prisma/client").$Enums.Role;
-        isActive: boolean;
+        status: string;
+        lastActive: string;
     }[]>;
     inviteAdmin(dto: InviteAdminDto, user: RequestUser): Promise<{
         id: string;
-        email: string;
         name: string;
+        email: string;
         role: import(".prisma/client").$Enums.Role;
+        status: string;
+        lastActive: string;
     }>;
     updateAdminStatus(id: string, dto: UpdateAdminStatusDto, user: RequestUser): Promise<{
         id: string;
-        email: string;
         name: string;
+        email: string;
         role: import(".prisma/client").$Enums.Role;
-        isActive: boolean;
+        status: string;
+        lastActive: string;
     }>;
     resetAdminPassword(id: string, user: RequestUser): Promise<{
         id: string;
@@ -143,41 +207,93 @@ export declare class SuperAdminController {
         simulated: boolean;
     }>;
     subscriptions(): Promise<{
+        id: string;
         storeId: string;
         storeName: string;
-        subscription: Record<string, unknown>;
-        createdAt: Date;
+        ownerEmail: string;
+        plan: "Starter" | "Growth" | "Scale";
+        status: "active" | "cancelled" | "trial" | "past_due";
+        amountUsd: number;
+        nextBillingDate: string;
+        expiryDate: string;
+        lastPaymentDate: string;
+        failedPaymentCount: number;
     }[]>;
+    syncSubscriptionPricing(user: RequestUser): Promise<{
+        updated: number;
+        skipped: number;
+        prices: Record<"Starter" | "Growth" | "Scale", number>;
+    }>;
     subscriptionByStore(storeId: string): Promise<{
+        id: string;
         storeId: string;
         storeName: string;
-        subscription: Record<string, unknown>;
+        ownerEmail: string;
+        plan: "Starter" | "Growth" | "Scale";
+        status: "active" | "cancelled" | "trial" | "past_due";
+        amountUsd: number;
+        nextBillingDate: string;
+        expiryDate: string;
+        lastPaymentDate: string;
+        failedPaymentCount: number;
     }>;
     updateSubscription(storeId: string, dto: SubscriptionUpdateDto, user: RequestUser): Promise<{
-        updatedAt: Date;
-        key: string;
-        valueJson: import("@prisma/client/runtime/library").JsonValue;
+        id: string;
+        storeId: string;
+        storeName: string;
+        ownerEmail: string;
+        plan: "Starter" | "Growth" | "Scale";
+        status: "active" | "cancelled" | "trial" | "past_due";
+        amountUsd: number;
+        nextBillingDate: string;
+        expiryDate: string;
+        lastPaymentDate: string;
+        failedPaymentCount: number;
     }>;
     retrySubscription(storeId: string, user: RequestUser): Promise<{
         retried: boolean;
         storeId: string;
         result: {
-            updatedAt: Date;
-            key: string;
-            valueJson: import("@prisma/client/runtime/library").JsonValue;
+            id: string;
+            storeId: string;
+            storeName: string;
+            ownerEmail: string;
+            plan: "Starter" | "Growth" | "Scale";
+            status: "active" | "cancelled" | "trial" | "past_due";
+            amountUsd: number;
+            nextBillingDate: string;
+            expiryDate: string;
+            lastPaymentDate: string;
+            failedPaymentCount: number;
         };
     }>;
     cancelSubscription(storeId: string, user: RequestUser): Promise<{
         cancelled: boolean;
         storeId: string;
         result: {
-            updatedAt: Date;
-            key: string;
-            valueJson: import("@prisma/client/runtime/library").JsonValue;
+            id: string;
+            storeId: string;
+            storeName: string;
+            ownerEmail: string;
+            plan: "Starter" | "Growth" | "Scale";
+            status: "active" | "cancelled" | "trial" | "past_due";
+            amountUsd: number;
+            nextBillingDate: string;
+            expiryDate: string;
+            lastPaymentDate: string;
+            failedPaymentCount: number;
         };
     }>;
     paymentOps(): Promise<{
         storeId: string;
+        storeName: string;
+        stripeEnabled: boolean;
+        stripeMode: "test" | "live";
+        sslCommerzEnabled: boolean;
+        sslCommerzMode: "test" | "live";
+        codEnabled: boolean;
+        failedCheckout24h: number;
+        checkoutSuccessRatePct: number;
     }[]>;
     paymentOpsMetrics(): Promise<{
         totalTransactions: number;
@@ -186,42 +302,159 @@ export declare class SuperAdminController {
     }>;
     paymentOpsByStore(storeId: string): Promise<{
         storeId: string;
-        config: string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray | null;
-        message: string;
+        storeName: string;
+        stripeEnabled: boolean;
+        stripeMode: "test" | "live";
+        sslCommerzEnabled: boolean;
+        sslCommerzMode: "test" | "live";
+        codEnabled: boolean;
+        failedCheckout24h: number;
+        checkoutSuccessRatePct: number;
     }>;
     updatePaymentOps(storeId: string, dto: UpdatePaymentOpsDto, user: RequestUser): Promise<{
-        updatedAt: Date;
-        key: string;
-        valueJson: import("@prisma/client/runtime/library").JsonValue;
+        storeId: string;
+        storeName: string;
+        stripeEnabled: boolean;
+        stripeMode: "test" | "live";
+        sslCommerzEnabled: boolean;
+        sslCommerzMode: "test" | "live";
+        codEnabled: boolean;
+        failedCheckout24h: number;
+        checkoutSuccessRatePct: number;
+    }>;
+    resetPaymentFailures(storeId: string, user: RequestUser): Promise<{
+        storeId: string;
+        storeName: string;
+        stripeEnabled: boolean;
+        stripeMode: "test" | "live";
+        sslCommerzEnabled: boolean;
+        sslCommerzMode: "test" | "live";
+        codEnabled: boolean;
+        failedCheckout24h: number;
+        checkoutSuccessRatePct: number;
     }>;
     tickets(): Promise<{
-        items: {
-            id: string;
-        }[];
-        note: string;
-    }>;
-    ticket(id: string): Promise<{
-        note: string;
         id: string;
+        storeName: string;
+        category: string;
+        priority: string;
+        status: string;
+        slaHours: number;
+        createdAt: string;
+        note: string;
+    }[]>;
+    ticket(id: string): Promise<{
+        id: string;
+        storeName: string;
+        category: string;
+        priority: string;
+        status: string;
+        slaHours: number;
+        createdAt: string;
+        note: string;
     }>;
     updateTicket(id: string, dto: UpdateTicketDto, user: RequestUser): Promise<{
-        updatedAt: Date;
-        key: string;
-        valueJson: import("@prisma/client/runtime/library").JsonValue;
-    }>;
-    health(): {
+        id: string;
+        storeName: string;
+        category: string;
+        priority: string;
         status: string;
-        services: string[];
-    };
+        slaHours: number;
+        createdAt: string;
+        note: string;
+    }>;
+    securityIncidents(): Promise<{
+        id: string;
+        title: string;
+        level: string;
+        startedAt: string;
+        status: string;
+        note: string;
+        resolutionNote: string;
+        resolvedAt: string;
+        updatedAt: string;
+    }[]>;
+    securityIncident(id: string): Promise<{
+        id: string;
+        title: string;
+        level: string;
+        startedAt: string;
+        status: string;
+        note: string;
+        resolutionNote: string;
+        resolvedAt: string;
+        updatedAt: string;
+    }>;
+    createSecurityIncident(dto: CreateIncidentDto, user: RequestUser): Promise<{
+        id: string;
+        title: string;
+        level: string;
+        startedAt: string;
+        status: string;
+        note: string;
+        resolutionNote: string;
+        resolvedAt: string;
+        updatedAt: string;
+    }>;
+    updateSecurityIncident(id: string, dto: UpdateIncidentDto, user: RequestUser): Promise<{
+        id: string;
+        title: string;
+        level: string;
+        startedAt: string;
+        status: string;
+        note: string;
+        resolutionNote: string;
+        resolvedAt: string;
+        updatedAt: string;
+    }>;
+    rotatePlatformKeys(user: RequestUser): Promise<{
+        rotated: boolean;
+        keyVersion: number;
+        keyId: string;
+        rotatedAt: string;
+    }>;
+    health(): Promise<{
+        status: string;
+        maintenanceMode: boolean;
+        services: {
+            name: string;
+            uptimePct: number;
+            latencyMs: number;
+            status: string;
+        }[];
+        generatedAt: string;
+    }>;
+    setMaintenanceMode(dto: SetMaintenanceModeDto, user: RequestUser): Promise<{
+        enabled: boolean;
+        updatedAt: string;
+    }>;
     restartService(service: string): {
         service: string;
         restarted: boolean;
         mode: string;
     };
     aiUsage(): Promise<{
+        models: {
+            model: string;
+            requests: number;
+            tokens: number;
+            costUsd: number;
+            quotaPct: number;
+        }[];
         grouped: (import(".prisma/client").Prisma.PickEnumerable<import(".prisma/client").Prisma.AiGenerationJobGroupByOutputType, "status"[]> & {
             _count: number;
         })[];
+        totals: {
+            requests: number;
+            completed: number;
+            failed: number;
+        };
+        hardCapUsd: number;
+        utilizationPct: number;
+    }>;
+    updateAiHardCap(dto: UpdateAiHardCapDto, user: RequestUser): Promise<{
+        hardCapUsd: number;
+        updatedAt: string;
     }>;
     flags(): import(".prisma/client").Prisma.PrismaPromise<{
         updatedAt: Date;
@@ -237,7 +470,12 @@ export declare class SuperAdminController {
         enabled: boolean;
         rolloutPct: number;
     }>;
-    auditLogs(): import(".prisma/client").Prisma.PrismaPromise<{
+    auditLogs(query: AuditLogQueryDto): Promise<({
+        actor: {
+            email: string;
+            name: string;
+        } | null;
+    } & {
         id: string;
         role: import(".prisma/client").$Enums.Role | null;
         createdAt: Date;
@@ -246,6 +484,13 @@ export declare class SuperAdminController {
         entityId: string;
         metaJson: import("@prisma/client/runtime/library").JsonValue | null;
         actorUserId: string | null;
+    })[] | {
+        id: string;
+        actor: string;
+        action: string;
+        target: string;
+        risk: "low" | "high" | "medium";
+        at: string;
     }[]>;
     settings(): import(".prisma/client").Prisma.PrismaPromise<{
         updatedAt: Date;

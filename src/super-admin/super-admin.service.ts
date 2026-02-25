@@ -21,6 +21,10 @@ const PLAN_PRICE_USD: Record<DashboardPlan, number> = {
   Growth: 129,
   Scale: 299,
 };
+const MAINTENANCE_MODE_KEY = 'super_admin:maintenance_mode';
+const PLATFORM_KEYS_KEY = 'super_admin:platform_keys';
+const AI_BUDGET_KEY = 'super_admin:ai_budget';
+const PLAN_SETTINGS_KEY = 'super_admin:plan_settings';
 
 @Injectable()
 export class SuperAdminService {
@@ -360,6 +364,7 @@ export class SuperAdminService {
     return stores.map((store) => {
       const lifecycle = lifecycleMap.get(store.id) ?? {};
       const domain = domainMap.get(store.id) ?? {};
+      const forcedThemeUpdateAt = this.asString(lifecycle.lastThemeUpdateAt, '');
       return {
         storeId: store.id,
         storeName: store.name,
@@ -382,9 +387,9 @@ export class SuperAdminService {
         lastPublishedAt: store.publishedAt
           ? store.publishedAt.toISOString()
           : 'N/A',
-        lastThemeUpdateAt: (
-          store.themeConfig?.updatedAt ?? store.updatedAt
-        ).toISOString(),
+        lastThemeUpdateAt:
+          forcedThemeUpdateAt ||
+          (store.themeConfig?.updatedAt ?? store.updatedAt).toISOString(),
       };
     });
   }
@@ -411,13 +416,26 @@ export class SuperAdminService {
     });
     if (!store) throw new NotFoundException('Store not found');
 
+    const existing = await this.prisma.platformSetting.findUnique({
+      where: { key: `lifecycle:${storeId}` },
+    });
+    const current = this.asRecord(existing?.valueJson);
+    const patch = Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined),
+    );
+    const next = {
+      ...current,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+
     const updated = await this.prisma.platformSetting.upsert({
       where: { key: `lifecycle:${storeId}` },
       create: {
         key: `lifecycle:${storeId}`,
-        valueJson: payload as Prisma.InputJsonValue,
+        valueJson: next as Prisma.InputJsonValue,
       },
-      update: { valueJson: payload as Prisma.InputJsonValue },
+      update: { valueJson: next as Prisma.InputJsonValue },
     });
 
     await this.auditService.log({
@@ -427,6 +445,54 @@ export class SuperAdminService {
       entityType: 'PlatformSetting',
       entityId: updated.key,
       metaJson: { storeId },
+    });
+
+    return this.lifecycleByStore(storeId);
+  }
+
+  async markThemeSynced(
+    storeId: string,
+    at: string | undefined,
+    actor: { id: string; role: Role },
+  ) {
+    const store = await this.prisma.store.findUnique({
+      where: { id: storeId },
+      select: { id: true },
+    });
+    if (!store) throw new NotFoundException('Store not found');
+
+    const now = new Date();
+    const nextAt = at ? new Date(at) : now;
+    if (Number.isNaN(nextAt.getTime())) {
+      throw new BadRequestException('Invalid theme sync timestamp');
+    }
+
+    const existing = await this.prisma.platformSetting.findUnique({
+      where: { key: `lifecycle:${storeId}` },
+    });
+    const current = this.asRecord(existing?.valueJson);
+    const next = {
+      ...current,
+      lastThemeUpdateAt: nextAt.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+
+    await this.prisma.platformSetting.upsert({
+      where: { key: `lifecycle:${storeId}` },
+      create: {
+        key: `lifecycle:${storeId}`,
+        valueJson: next as Prisma.InputJsonValue,
+      },
+      update: { valueJson: next as Prisma.InputJsonValue },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.lifecycle.theme_sync',
+      entityType: 'PlatformSetting',
+      entityId: `lifecycle:${storeId}`,
+      metaJson: { storeId, at: nextAt.toISOString() },
     });
 
     return this.lifecycleByStore(storeId);
@@ -714,6 +780,76 @@ export class SuperAdminService {
     return { cancelled: true, storeId, result };
   }
 
+  async syncSubscriptionPricing(actor: { id: string; role: Role }) {
+    const [planSettings, subscriptionRows] = await Promise.all([
+      this.prisma.platformSetting.findUnique({
+        where: { key: PLAN_SETTINGS_KEY },
+      }),
+      this.prisma.platformSetting.findMany({
+        where: { key: { startsWith: 'subscription:' } },
+      }),
+    ]);
+
+    const settings = this.asRecord(planSettings?.valueJson);
+    const prices: Record<DashboardPlan, number> = {
+      Starter: Math.max(0, this.asNumber(settings.starterPrice, PLAN_PRICE_USD.Starter)),
+      Growth: Math.max(0, this.asNumber(settings.growthPrice, PLAN_PRICE_USD.Growth)),
+      Scale: Math.max(0, this.asNumber(settings.scalePrice, PLAN_PRICE_USD.Scale)),
+    };
+
+    const now = new Date().toISOString();
+    const updates: Prisma.PrismaPromise<unknown>[] = [];
+    let updated = 0;
+    let skipped = 0;
+
+    for (const row of subscriptionRows) {
+      const current = this.asRecord(row.valueJson);
+      const status = this.normalizeSubscriptionStatus(current.status);
+      if (status !== 'active') {
+        skipped += 1;
+        continue;
+      }
+
+      const plan = this.normalizePlan(current.plan);
+      const nextAmount = prices[plan];
+      const currentAmount = this.asNumber(current.amountUsd, nextAmount);
+      if (Math.abs(currentAmount - nextAmount) < 0.0001) {
+        skipped += 1;
+        continue;
+      }
+
+      const next = {
+        ...current,
+        amountUsd: nextAmount,
+        syncedFromPlanSettingsAt: now,
+        updatedAt: now,
+      };
+
+      updates.push(
+        this.prisma.platformSetting.update({
+          where: { key: row.key },
+          data: { valueJson: next as Prisma.InputJsonValue },
+        }),
+      );
+      updated += 1;
+    }
+
+    if (updates.length) {
+      await this.prisma.$transaction(updates);
+    }
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.subscription.sync_pricing',
+      entityType: 'PlatformSetting',
+      entityId: 'subscription:*',
+      metaJson: { updated, skipped, prices },
+    });
+
+    return { updated, skipped, prices };
+  }
+
   async paymentOps() {
     const since = new Date(Date.now() - 86_400_000);
     const [stores, configRows, txRows] = await Promise.all([
@@ -765,9 +901,23 @@ export class SuperAdminService {
         failed: 0,
         succeeded: 0,
       };
-      const successRate = metric.total
+      const computedSuccessRate = metric.total
         ? Number(((metric.succeeded / metric.total) * 100).toFixed(2))
         : 0;
+      const manualFailed = this.asNumber(
+        config.manualFailedCheckout24h,
+        Number.NaN,
+      );
+      const manualSuccessRate = this.asNumber(
+        config.manualCheckoutSuccessRatePct,
+        Number.NaN,
+      );
+      const failedCheckout24h = Number.isFinite(manualFailed)
+        ? Math.max(0, Math.round(manualFailed))
+        : metric.failed;
+      const checkoutSuccessRatePct = Number.isFinite(manualSuccessRate)
+        ? Math.max(0, Math.min(100, manualSuccessRate))
+        : computedSuccessRate;
 
       return {
         storeId: store.id,
@@ -777,8 +927,8 @@ export class SuperAdminService {
         sslCommerzEnabled: this.asBoolean(config.sslCommerzEnabled, false),
         sslCommerzMode: this.normalizeMode(config.sslCommerzMode ?? config.mode),
         codEnabled: this.asBoolean(config.codEnabled, true),
-        failedCheckout24h: metric.failed,
-        checkoutSuccessRatePct: successRate,
+        failedCheckout24h,
+        checkoutSuccessRatePct,
       };
     });
   }
@@ -866,6 +1016,44 @@ export class SuperAdminService {
       action: 'super_admin.payment_ops.update',
       entityType: 'PlatformSetting',
       entityId: updated.key,
+      metaJson: { storeId },
+    });
+
+    return this.paymentOpsByStore(storeId);
+  }
+
+  async resetPaymentFailures(storeId: string, actor: { id: string; role: Role }) {
+    const [existing, current] = await Promise.all([
+      this.prisma.platformSetting.findUnique({
+        where: { key: `payment_ops:${storeId}` },
+      }),
+      this.paymentOpsByStore(storeId),
+    ]);
+
+    const base = this.asRecord(existing?.valueJson);
+    const next = {
+      ...base,
+      manualFailedCheckout24h: 0,
+      manualCheckoutSuccessRatePct: Math.max(current.checkoutSuccessRatePct, 98),
+      failureCounterResetAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.prisma.platformSetting.upsert({
+      where: { key: `payment_ops:${storeId}` },
+      create: {
+        key: `payment_ops:${storeId}`,
+        valueJson: next as Prisma.InputJsonValue,
+      },
+      update: { valueJson: next as Prisma.InputJsonValue },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.payment_ops.reset_failures',
+      entityType: 'PlatformSetting',
+      entityId: `payment_ops:${storeId}`,
       metaJson: { storeId },
     });
 
@@ -1105,9 +1293,15 @@ export class SuperAdminService {
     return this.toIncidentRecord(key, this.asRecord(row.valueJson), row.updatedAt);
   }
 
-  health() {
+  async health() {
+    const maintenanceSetting = await this.prisma.platformSetting.findUnique({
+      where: { key: MAINTENANCE_MODE_KEY },
+    });
+    const maintenance = this.asRecord(maintenanceSetting?.valueJson);
+
     return {
       status: 'healthy',
+      maintenanceMode: this.asBoolean(maintenance.enabled, false),
       services: [
         {
           name: 'Public API',
@@ -1142,11 +1336,58 @@ export class SuperAdminService {
     return { service, restarted: true, mode: 'simulated' };
   }
 
-  async aiUsage() {
-    const grouped = await this.prisma.aiGenerationJob.groupBy({
-      by: ['status'],
-      _count: true,
+  async setMaintenanceMode(
+    enabled: boolean,
+    actor: { id: string; role: Role },
+  ) {
+    const now = new Date().toISOString();
+    await this.prisma.platformSetting.upsert({
+      where: { key: MAINTENANCE_MODE_KEY },
+      create: {
+        key: MAINTENANCE_MODE_KEY,
+        valueJson: {
+          enabled,
+          updatedAt: now,
+          updatedBy: actor.id,
+        } as Prisma.InputJsonValue,
+      },
+      update: {
+        valueJson: {
+          enabled,
+          updatedAt: now,
+          updatedBy: actor.id,
+        } as Prisma.InputJsonValue,
+      },
     });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.health.maintenance',
+      entityType: 'PlatformSetting',
+      entityId: MAINTENANCE_MODE_KEY,
+      metaJson: { enabled },
+    });
+
+    return {
+      enabled,
+      updatedAt: now,
+    };
+  }
+
+  async aiUsage() {
+    const [grouped, budgetSetting] = await Promise.all([
+      this.prisma.aiGenerationJob.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
+      this.prisma.platformSetting.findUnique({
+        where: { key: AI_BUDGET_KEY },
+      }),
+    ]);
+
+    const budget = this.asRecord(budgetSetting?.valueJson);
+    const hardCapUsd = Math.max(1, this.asNumber(budget.hardCapUsd, 150));
     const totalRequests = grouped.reduce((sum, row) => sum + row._count, 0);
     const completed =
       grouped.find((row) => row.status === 'completed')?._count ?? 0;
@@ -1170,6 +1411,96 @@ export class SuperAdminService {
         completed,
         failed,
       },
+      hardCapUsd,
+      utilizationPct: Math.min(100, Math.round((costUsd / hardCapUsd) * 100)),
+    };
+  }
+
+  async updateAiHardCap(
+    hardCapUsd: number,
+    actor: { id: string; role: Role },
+  ) {
+    const normalized = Math.max(1, Math.round(hardCapUsd));
+    const now = new Date().toISOString();
+
+    await this.prisma.platformSetting.upsert({
+      where: { key: AI_BUDGET_KEY },
+      create: {
+        key: AI_BUDGET_KEY,
+        valueJson: {
+          hardCapUsd: normalized,
+          updatedAt: now,
+          updatedBy: actor.id,
+        } as Prisma.InputJsonValue,
+      },
+      update: {
+        valueJson: {
+          hardCapUsd: normalized,
+          updatedAt: now,
+          updatedBy: actor.id,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.ai_budget.update',
+      entityType: 'PlatformSetting',
+      entityId: AI_BUDGET_KEY,
+      metaJson: { hardCapUsd: normalized },
+    });
+
+    return {
+      hardCapUsd: normalized,
+      updatedAt: now,
+    };
+  }
+
+  async rotatePlatformKeys(actor: { id: string; role: Role }) {
+    const existing = await this.prisma.platformSetting.findUnique({
+      where: { key: PLATFORM_KEYS_KEY },
+    });
+    const current = this.asRecord(existing?.valueJson);
+    const keyVersion = Math.max(1, this.asNumber(current.keyVersion, 0) + 1);
+    const keyId = `pk-${Date.now().toString(36)}`;
+    const rotatedAt = new Date().toISOString();
+
+    await this.prisma.platformSetting.upsert({
+      where: { key: PLATFORM_KEYS_KEY },
+      create: {
+        key: PLATFORM_KEYS_KEY,
+        valueJson: {
+          keyVersion,
+          keyId,
+          rotatedAt,
+          rotatedBy: actor.id,
+        } as Prisma.InputJsonValue,
+      },
+      update: {
+        valueJson: {
+          keyVersion,
+          keyId,
+          rotatedAt,
+          rotatedBy: actor.id,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.auditService.log({
+      actorUserId: actor.id,
+      role: actor.role,
+      action: 'super_admin.security.rotate_keys',
+      entityType: 'PlatformSetting',
+      entityId: PLATFORM_KEYS_KEY,
+      metaJson: { keyVersion, keyId },
+    });
+
+    return {
+      rotated: true,
+      keyVersion,
+      keyId,
+      rotatedAt,
     };
   }
 

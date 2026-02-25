@@ -18,14 +18,56 @@ let ReviewsService = class ReviewsService {
         this.prisma = prisma;
         this.auditService = auditService;
     }
-    list(storeId) {
-        return this.prisma.productReview.findMany({
-            where: { storeId },
-            include: {
-                product: { select: { id: true, title: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+    async list(storeId, options) {
+        const page = Math.max(1, options?.page ?? 1);
+        const limit = Math.min(Math.max(options?.limit ?? 20, 1), 200);
+        const where = {
+            storeId,
+            ...(this.toApprovalFilter(options?.status) ?? {}),
+            ...(options?.q
+                ? {
+                    OR: [
+                        { customer: { contains: options.q, mode: 'insensitive' } },
+                        { title: { contains: options.q, mode: 'insensitive' } },
+                        { comment: { contains: options.q, mode: 'insensitive' } },
+                        {
+                            product: {
+                                title: { contains: options.q, mode: 'insensitive' },
+                            },
+                        },
+                    ],
+                }
+                : {}),
+            ...(options?.from || options?.to
+                ? {
+                    createdAt: {
+                        ...(options?.from ? { gte: new Date(options.from) } : {}),
+                        ...(options?.to ? { lte: new Date(options.to) } : {}),
+                    },
+                }
+                : {}),
+        };
+        const skip = (page - 1) * limit;
+        const orderBy = this.reviewSort(options?.sort);
+        const [items, total] = await Promise.all([
+            this.prisma.productReview.findMany({
+                where,
+                include: {
+                    product: { select: { id: true, title: true } },
+                },
+                orderBy,
+                skip,
+                take: limit,
+            }),
+            this.prisma.productReview.count({ where }),
+        ]);
+        return {
+            items,
+            page,
+            limit,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / limit)),
+        };
     }
     async approve(storeId, reviewId, isApproved, actor) {
         const existing = await this.prisma.productReview.findFirst({
@@ -65,6 +107,28 @@ let ReviewsService = class ReviewsService {
             metaJson: { storeId },
         });
         return deleted;
+    }
+    toApprovalFilter(status) {
+        if (!status)
+            return null;
+        const raw = status.trim().toLowerCase();
+        if (['approved', 'published', 'active'].includes(raw)) {
+            return { isApproved: true };
+        }
+        if (['pending', 'rejected', 'unapproved', 'hidden'].includes(raw)) {
+            return { isApproved: false };
+        }
+        return null;
+    }
+    reviewSort(sort) {
+        const key = String(sort ?? 'createdAt_desc').trim().toLowerCase();
+        if (key === 'createdat_asc')
+            return { createdAt: 'asc' };
+        if (key === 'rating_desc')
+            return { rating: 'desc' };
+        if (key === 'rating_asc')
+            return { rating: 'asc' };
+        return { createdAt: 'desc' };
     }
 };
 exports.ReviewsService = ReviewsService;

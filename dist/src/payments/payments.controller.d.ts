@@ -20,6 +20,15 @@ declare class PaymentConfigDto {
     mode?: string;
     key?: string;
 }
+declare class PaymentTransactionListQueryDto {
+    page?: number;
+    limit?: number;
+    q?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    sort?: string;
+}
 export declare class PaymentsController {
     private readonly paymentsService;
     constructor(paymentsService: PaymentsService);
@@ -35,11 +44,11 @@ export declare class PaymentsController {
         updatedAt: Date;
         storeId: string;
         status: string;
+        currency: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
         amount: import("@prisma/client/runtime/library").Decimal;
-        currency: string;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     confirm(storeId: string, dto: ConfirmPaymentDto, user: RequestUser): Promise<{
@@ -48,11 +57,11 @@ export declare class PaymentsController {
         updatedAt: Date;
         storeId: string;
         status: string;
+        currency: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
         amount: import("@prisma/client/runtime/library").Decimal;
-        currency: string;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
     refund(storeId: string, dto: RefundPaymentDto, user: RequestUser): Promise<{
@@ -61,25 +70,94 @@ export declare class PaymentsController {
         updatedAt: Date;
         storeId: string;
         status: string;
+        currency: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
         amount: import("@prisma/client/runtime/library").Decimal;
-        currency: string;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
     }>;
-    transactions(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
+    transactions(storeId: string, query: PaymentTransactionListQueryDto): Promise<{
+        items: ({
+            order: {
+                id: string;
+                code: string;
+                customerEmail: string;
+                customerName: string;
+            } | null;
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: string;
+            currency: string;
+            orderId: string | null;
+            provider: string;
+            providerRef: string | null;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            metadata: import("@prisma/client/runtime/library").JsonValue | null;
+        })[];
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    }>;
+    transaction(storeId: string, transactionId: string): Promise<{
+        order: ({
+            shipment: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                storeId: string;
+                status: string;
+                orderId: string;
+                courier: string;
+                trackingNumber: string;
+                trackingUrl: string | null;
+                estimatedDelivery: Date | null;
+                shippedAt: Date | null;
+                deliveredAt: Date | null;
+            } | null;
+            items: {
+                id: string;
+                createdAt: Date;
+                productId: string | null;
+                orderId: string;
+                productNameSnapshot: string;
+                qty: number;
+                unitPrice: import("@prisma/client/runtime/library").Decimal;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: import(".prisma/client").$Enums.OrderStatus;
+            code: string;
+            total: import("@prisma/client/runtime/library").Decimal;
+            customerEmail: string;
+            customerName: string;
+            customerPhone: string | null;
+            shippingAddress: import("@prisma/client/runtime/library").JsonValue | null;
+            subtotal: import("@prisma/client/runtime/library").Decimal | null;
+            discountTotal: import("@prisma/client/runtime/library").Decimal | null;
+            taxTotal: import("@prisma/client/runtime/library").Decimal | null;
+            shippingTotal: import("@prisma/client/runtime/library").Decimal | null;
+            couponCode: string | null;
+        }) | null;
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
         status: string;
+        currency: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
         amount: import("@prisma/client/runtime/library").Decimal;
-        currency: string;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
-    }[]>;
+    }>;
 }
 export {};

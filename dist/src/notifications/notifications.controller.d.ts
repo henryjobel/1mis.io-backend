@@ -6,6 +6,15 @@ declare class SendNotificationDto {
     templateKey?: string;
     payload?: Record<string, unknown>;
 }
+declare class NotificationLogsQueryDto {
+    page?: number;
+    limit?: number;
+    q?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    sort?: string;
+}
 export declare class NotificationsController {
     private readonly notificationsService;
     constructor(notificationsService: NotificationsService);
@@ -20,16 +29,22 @@ export declare class NotificationsController {
         recipient: string;
         templateKey: string | null;
     }>;
-    logs(storeId: string): import(".prisma/client").Prisma.PrismaPromise<{
-        id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        storeId: string;
-        status: string;
-        payload: import("@prisma/client/runtime/library").JsonValue | null;
-        channel: string;
-        recipient: string;
-        templateKey: string | null;
-    }[]>;
+    logs(storeId: string, query: NotificationLogsQueryDto): Promise<{
+        items: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: string;
+            payload: import("@prisma/client/runtime/library").JsonValue | null;
+            channel: string;
+            recipient: string;
+            templateKey: string | null;
+        }[];
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    }>;
 }
 export {};

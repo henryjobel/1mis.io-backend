@@ -28,11 +28,11 @@ export declare class PaymentsService {
         updatedAt: Date;
         storeId: string;
         status: string;
+        currency: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
         amount: Prisma.Decimal;
-        currency: string;
         metadata: Prisma.JsonValue | null;
     }>;
     confirm(storeId: string, data: {
@@ -48,11 +48,11 @@ export declare class PaymentsService {
         updatedAt: Date;
         storeId: string;
         status: string;
+        currency: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
         amount: Prisma.Decimal;
-        currency: string;
         metadata: Prisma.JsonValue | null;
     }>;
     refund(storeId: string, data: {
@@ -67,24 +67,102 @@ export declare class PaymentsService {
         updatedAt: Date;
         storeId: string;
         status: string;
+        currency: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
         amount: Prisma.Decimal;
-        currency: string;
         metadata: Prisma.JsonValue | null;
     }>;
-    transactions(storeId: string): Prisma.PrismaPromise<{
+    transactions(storeId: string, options?: {
+        page?: number;
+        limit?: number;
+        q?: string;
+        status?: string;
+        from?: string;
+        to?: string;
+        sort?: string;
+    }): Promise<{
+        items: ({
+            order: {
+                id: string;
+                code: string;
+                customerEmail: string;
+                customerName: string;
+            } | null;
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: string;
+            currency: string;
+            orderId: string | null;
+            provider: string;
+            providerRef: string | null;
+            amount: Prisma.Decimal;
+            metadata: Prisma.JsonValue | null;
+        })[];
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    }>;
+    transaction(storeId: string, transactionId: string): Promise<{
+        order: ({
+            shipment: {
+                id: string;
+                createdAt: Date;
+                updatedAt: Date;
+                storeId: string;
+                status: string;
+                orderId: string;
+                courier: string;
+                trackingNumber: string;
+                trackingUrl: string | null;
+                estimatedDelivery: Date | null;
+                shippedAt: Date | null;
+                deliveredAt: Date | null;
+            } | null;
+            items: {
+                id: string;
+                createdAt: Date;
+                productId: string | null;
+                orderId: string;
+                productNameSnapshot: string;
+                qty: number;
+                unitPrice: Prisma.Decimal;
+            }[];
+        } & {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: import(".prisma/client").$Enums.OrderStatus;
+            code: string;
+            total: Prisma.Decimal;
+            customerEmail: string;
+            customerName: string;
+            customerPhone: string | null;
+            shippingAddress: Prisma.JsonValue | null;
+            subtotal: Prisma.Decimal | null;
+            discountTotal: Prisma.Decimal | null;
+            taxTotal: Prisma.Decimal | null;
+            shippingTotal: Prisma.Decimal | null;
+            couponCode: string | null;
+        }) | null;
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         storeId: string;
         status: string;
+        currency: string;
         orderId: string | null;
         provider: string;
         providerRef: string | null;
         amount: Prisma.Decimal;
-        currency: string;
         metadata: Prisma.JsonValue | null;
-    }[]>;
+    }>;
+    private transactionSort;
 }
