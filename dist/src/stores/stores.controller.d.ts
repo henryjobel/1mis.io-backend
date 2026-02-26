@@ -36,12 +36,6 @@ declare class UpdateMarketingDto {
     isCapiEnabled?: boolean;
     isGtmEnabled?: boolean;
 }
-declare class UpdateContentDto {
-    hero?: Record<string, unknown>;
-    navigation?: Record<string, unknown>;
-    footer?: Record<string, unknown>;
-    sections?: Record<string, unknown>;
-}
 declare class ConnectDomainDto {
     domain: string;
 }
@@ -151,7 +145,7 @@ export declare class StoresController {
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     getContent(id: string): Promise<string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray>;
-    upsertContent(id: string, dto: UpdateContentDto, user: RequestUser): Promise<{
+    upsertContent(id: string, dto: Record<string, unknown>, user: RequestUser): Promise<{
         updatedAt: Date;
         key: string;
         valueJson: import("@prisma/client/runtime/library").JsonValue;

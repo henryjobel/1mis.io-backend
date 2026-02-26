@@ -109,20 +109,7 @@ export declare class AiGenerationService implements OnModuleInit {
         dryRun: boolean;
         persisted: boolean;
         historyId: null;
-        patch: {
-            hero: {
-                title: string;
-                aiPrompt: string;
-                updatedAt: string;
-            };
-        } | {
-            [x: string]: {
-                aiPrompt: string;
-                aiSummary: string;
-                updatedAt: string;
-            };
-            hero?: undefined;
-        };
+        patch: Record<string, unknown>;
         preview: Record<string, unknown>;
     } | {
         section: string;
@@ -130,20 +117,7 @@ export declare class AiGenerationService implements OnModuleInit {
         dryRun: boolean;
         persisted: boolean;
         historyId: `${string}-${string}-${string}-${string}-${string}`;
-        patch: {
-            hero: {
-                title: string;
-                aiPrompt: string;
-                updatedAt: string;
-            };
-        } | {
-            [x: string]: {
-                aiPrompt: string;
-                aiSummary: string;
-                updatedAt: string;
-            };
-            hero?: undefined;
-        };
+        patch: Record<string, unknown>;
         preview: Record<string, unknown>;
     }>;
     sectionHistory(storeId: string): Promise<{
@@ -197,6 +171,21 @@ export declare class AiGenerationService implements OnModuleInit {
     private fallbackResult;
     private stripCodeFence;
     private generateSectionPatch;
+    private generateFullSitePatch;
+    private generateFullSitePatchFromGemini;
+    private generateFullSitePatchFallback;
+    private resolveSectionRecord;
+    private generateSectionPatchFromGemini;
+    private sectionSchemaHint;
+    private sanitizeSectionPatch;
+    private generateSectionPatchFallback;
+    private hasOwn;
+    private asUnknownRecord;
+    private normalizeColor;
+    private extractEmail;
+    private extractPhone;
+    private extractDomain;
+    private extractTailAfterKeyword;
     private applySectionPatch;
     private extractQuotedValue;
     private asRecord;

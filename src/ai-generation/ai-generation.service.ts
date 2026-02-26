@@ -30,6 +30,60 @@ const aiResultSchema = z.object({
   sections: z.array(z.string()).min(1),
 });
 
+const sectionNames = [
+  'hero',
+  'header',
+  'product-card',
+  'footer',
+  'buttons',
+  'domain',
+  'site',
+] as const;
+
+const themePresetValues = ['aurora', 'sand', 'slate'] as const;
+const cardStyleValues = ['minimal', 'bordered', 'shadow', 'gradient'] as const;
+const buttonRadiusValues = ['soft', 'pill', 'square'] as const;
+const promoBannerToneValues = ['accent', 'primary', 'mixed'] as const;
+
+type ThemePresetValue = (typeof themePresetValues)[number];
+
+const themePalette: Record<
+  ThemePresetValue,
+  {
+    primaryColor: string;
+    accentColor: string;
+    backgroundColor: string;
+    surfaceColor: string;
+    textColor: string;
+    mutedTextColor: string;
+  }
+> = {
+  aurora: {
+    primaryColor: '#0f766e',
+    accentColor: '#f97316',
+    backgroundColor: '#f5f7fb',
+    surfaceColor: '#ffffff',
+    textColor: '#0f172a',
+    mutedTextColor: '#475569',
+  },
+  sand: {
+    primaryColor: '#9a3412',
+    accentColor: '#0284c7',
+    backgroundColor: '#faf6ed',
+    surfaceColor: '#fffdf7',
+    textColor: '#3f2f24',
+    mutedTextColor: '#6b5a50',
+  },
+  slate: {
+    primaryColor: '#e2e8f0',
+    accentColor: '#22d3ee',
+    backgroundColor: '#0f172a',
+    surfaceColor: '#1e293b',
+    textColor: '#f8fafc',
+    mutedTextColor: '#cbd5e1',
+  },
+};
+
 @Injectable()
 export class AiGenerationService implements OnModuleInit {
   private readonly logger = new Logger(AiGenerationService.name);
@@ -408,6 +462,11 @@ export class AiGenerationService implements OnModuleInit {
     if (!section) {
       throw new BadRequestException('section is required');
     }
+    if (!sectionNames.includes(section as (typeof sectionNames)[number])) {
+      throw new BadRequestException(
+        `section must be one of: ${sectionNames.join(', ')}`,
+      );
+    }
     if (!prompt) {
       throw new BadRequestException('prompt is required');
     }
@@ -418,7 +477,7 @@ export class AiGenerationService implements OnModuleInit {
     });
 
     const current = this.asRecord(contentRow?.valueJson);
-    const patch = this.generateSectionPatch(section, prompt, current);
+    const patch = await this.generateSectionPatch(section, prompt, current);
     const preview = this.applySectionPatch(current, patch);
     const dryRun = data.dryRun ?? false;
 
@@ -803,39 +862,720 @@ export class AiGenerationService implements OnModuleInit {
       .trim();
   }
 
-  private generateSectionPatch(
+  private async generateSectionPatch(
     section: string,
     prompt: string,
     current: Record<string, unknown>,
   ) {
+    if (section === 'site') {
+      return this.generateFullSitePatch(prompt, current);
+    }
+
     const sectionState = this.asRecord(
       current[section] as Prisma.JsonValue | undefined,
     );
     const nowIso = new Date().toISOString();
     const inferredTitle = this.extractQuotedValue(prompt);
 
-    if (section === 'hero') {
-      return {
-        hero: {
-          ...sectionState,
-          title:
-            inferredTitle ||
-            this.asString(sectionState.title, '') ||
-            prompt.slice(0, 120),
-          aiPrompt: prompt,
-          updatedAt: nowIso,
-        },
-      };
+    let sectionPatch = await this.generateSectionPatchFromGemini(
+      section,
+      prompt,
+      sectionState,
+    );
+
+    if (!sectionPatch || !Object.keys(sectionPatch).length) {
+      sectionPatch = this.generateSectionPatchFallback(
+        section,
+        prompt,
+        sectionState,
+      );
     }
+
+    const summary =
+      this.asString(sectionPatch.aiSummary, '') ||
+      inferredTitle ||
+      prompt.slice(0, 180);
 
     return {
       [section]: {
         ...sectionState,
+        ...sectionPatch,
         aiPrompt: prompt,
-        aiSummary: inferredTitle ?? prompt,
+        aiSummary: summary,
         updatedAt: nowIso,
       },
     };
+  }
+
+  private async generateFullSitePatch(
+    prompt: string,
+    current: Record<string, unknown>,
+  ) {
+    let sitePatch = await this.generateFullSitePatchFromGemini(prompt, current);
+    if (!sitePatch || !Object.keys(sitePatch).length) {
+      sitePatch = this.generateFullSitePatchFallback(prompt, current);
+    }
+
+    const nowIso = new Date().toISOString();
+    const sharedSummary =
+      this.asString(sitePatch.aiSummary, '') || prompt.slice(0, 180);
+    const next: Record<string, unknown> = {};
+
+    for (const sectionName of sectionNames) {
+      if (sectionName === 'site') continue;
+      const partial = this.asUnknownRecord(sitePatch[sectionName]);
+      if (!Object.keys(partial).length) continue;
+
+      const currentSectionState = this.asRecord(
+        current[sectionName] as Prisma.JsonValue | undefined,
+      );
+      const sectionSummary =
+        this.asString(partial.aiSummary, '') || sharedSummary;
+
+      next[sectionName] = {
+        ...currentSectionState,
+        ...partial,
+        aiPrompt: prompt,
+        aiSummary: sectionSummary,
+        updatedAt: nowIso,
+      };
+    }
+
+    if (!Object.keys(next).length) {
+      const fallbackTitle =
+        this.extractQuotedValue(prompt) ||
+        `Store Update: ${prompt.slice(0, 90)}`;
+      const currentHero = this.asRecord(
+        current.hero as Prisma.JsonValue | undefined,
+      );
+
+      next.hero = {
+        ...currentHero,
+        title: fallbackTitle,
+        subtitle:
+          this.asString(currentHero.subtitle, '') ||
+          'Store updated from full-site prompt.',
+        aiPrompt: prompt,
+        aiSummary: sharedSummary || 'Updated site from one prompt.',
+        updatedAt: nowIso,
+      };
+    }
+
+    return next;
+  }
+
+  private async generateFullSitePatchFromGemini(
+    prompt: string,
+    current: Record<string, unknown>,
+  ): Promise<Record<string, unknown> | null> {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      return null;
+    }
+
+    const model = this.configService.get<string>(
+      'GEMINI_MODEL',
+      'gemini-1.5-flash',
+    );
+    const instruction = `You convert one prompt into a full ecommerce site patch. Return only JSON with this shape:\n{\n  "summary": "short summary",\n  "hero": {"title":"string","subtitle":"string","bannerImage":"string|null","promoBannerEnabled":true,"promoBannerTitle":"string","promoBannerSubtitle":"string","promoBannerCta":"string","promoBannerTone":"accent|primary|mixed","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "header": {"logoText":"string","announcementText":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "product-card": {"cardStyle":"minimal|bordered|shadow|gradient","trendingTitle":"string","categoriesTitle":"string","bestSellingTitle":"string","allProductsTitle":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "footer": {"aboutTitle":"string","aboutDescription":"string","contactTitle":"string","contactEmail":"string","contactPhone":"string","contactAddress":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "buttons": {"buttonRadius":"soft|pill|square","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "domain": {"customDomain":"string","hostedSubdomain":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}\n}\nCurrent store content JSON: ${JSON.stringify(
+      current,
+    )}\nUser prompt: ${prompt}\nRules:\n- Include only fields that should change.\n- Keep text concise and practical.\n- Never include markdown or explanation text.`;
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: instruction }] }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 1400,
+            },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text();
+        this.logger.warn(
+          `Gemini full-site patch failed (${response.status}): ${body.slice(0, 250)}`,
+        );
+        return null;
+      }
+
+      const data = (await response.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) {
+        return null;
+      }
+
+      const parsedRaw = JSON.parse(this.stripCodeFence(rawText)) as unknown;
+      const parsed = this.asUnknownRecord(parsedRaw);
+      const payload = this.asUnknownRecord(parsed.patch);
+      const source = Object.keys(payload).length ? payload : parsed;
+      const summary = this.asString(parsed.summary, '');
+
+      const next: Record<string, unknown> = {};
+      for (const sectionName of sectionNames) {
+        if (sectionName === 'site') continue;
+        const sectionInput = this.resolveSectionRecord(source, sectionName);
+        const sanitized = this.sanitizeSectionPatch(sectionName, sectionInput);
+        if (!Object.keys(sanitized).length) continue;
+        if (summary) {
+          sanitized.aiSummary = summary.slice(0, 220);
+        }
+        next[sectionName] = sanitized;
+      }
+
+      if (summary) {
+        next.aiSummary = summary.slice(0, 220);
+      }
+
+      return next;
+    } catch (error) {
+      this.logger.warn(
+        `Gemini full-site patch parse error: ${(error as Error).message}`,
+      );
+      return null;
+    }
+  }
+
+  private generateFullSitePatchFallback(
+    prompt: string,
+    current: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const next: Record<string, unknown> = {};
+
+    for (const sectionName of sectionNames) {
+      if (sectionName === 'site') continue;
+      const sectionState = this.asRecord(
+        current[sectionName] as Prisma.JsonValue | undefined,
+      );
+      const fallbackPatch = this.generateSectionPatchFallback(
+        sectionName,
+        prompt,
+        sectionState,
+      );
+      if (Object.keys(fallbackPatch).length) {
+        next[sectionName] = fallbackPatch;
+      }
+    }
+
+    if (!Object.keys(next).length) {
+      const looksLikeFullSitePrompt =
+        /(full|whole|entire|complete|all|puro|sob|overall)/i.test(prompt) &&
+        /(site|website|store)/i.test(prompt);
+
+      if (looksLikeFullSitePrompt) {
+        next.hero = this.sanitizeSectionPatch('hero', {
+          title: this.extractQuotedValue(prompt) || 'AI Crafted Storefront',
+          subtitle: 'Complete site customized from your prompt.',
+        });
+        const domain = this.extractDomain(prompt);
+        if (domain) {
+          next.domain = this.sanitizeSectionPatch('domain', {
+            customDomain: domain,
+          });
+        }
+      }
+    }
+
+    next.aiSummary = 'Full site update applied from one prompt.';
+    return next;
+  }
+
+  private resolveSectionRecord(
+    source: Record<string, unknown>,
+    section: Exclude<(typeof sectionNames)[number], 'site'>,
+  ) {
+    if (section === 'product-card') {
+      const byDash = this.asUnknownRecord(source['product-card']);
+      if (Object.keys(byDash).length) return byDash;
+      const byUnderscore = this.asUnknownRecord(source.product_card);
+      if (Object.keys(byUnderscore).length) return byUnderscore;
+      return this.asUnknownRecord(source.productCard);
+    }
+    return this.asUnknownRecord(source[section]);
+  }
+
+  private async generateSectionPatchFromGemini(
+    section: string,
+    prompt: string,
+    sectionState: Record<string, unknown>,
+  ): Promise<Record<string, unknown> | null> {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      return null;
+    }
+
+    const model = this.configService.get<string>(
+      'GEMINI_MODEL',
+      'gemini-1.5-flash',
+    );
+    const schemaHint = this.sectionSchemaHint(section);
+    const instruction = `You convert a user prompt into a strict JSON patch for a single ecommerce dashboard section.\nSection: ${section}\nCurrent section state JSON: ${JSON.stringify(
+      sectionState,
+    )}\nUser prompt: ${prompt}\nReturn only JSON with this exact shape:\n{\n  "summary": "short natural summary",\n  "patch": ${schemaHint}\n}\nRules:\n- Return patch fields only for requested updates.\n- Keep values practical for ecommerce.\n- Never include explanations or markdown.\n- If unclear, return empty patch {}.`;
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: instruction }] }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 900,
+            },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const body = await response.text();
+        this.logger.warn(
+          `Gemini section patch failed (${response.status}): ${body.slice(0, 250)}`,
+        );
+        return null;
+      }
+
+      const data = (await response.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) {
+        return null;
+      }
+
+      const parsedRaw = JSON.parse(this.stripCodeFence(rawText)) as unknown;
+      const parsed = this.asUnknownRecord(parsedRaw);
+      const patchInput = this.asUnknownRecord(parsed.patch);
+      const sanitized = this.sanitizeSectionPatch(section, patchInput);
+      const summary = this.asString(parsed.summary, '');
+      if (summary) {
+        sanitized.aiSummary = summary.slice(0, 220);
+      }
+      return sanitized;
+    } catch (error) {
+      this.logger.warn(
+        `Gemini section patch parse error: ${(error as Error).message}`,
+      );
+      return null;
+    }
+  }
+
+  private sectionSchemaHint(section: string) {
+    if (section === 'site') {
+      return `{"summary":"string","hero":{},"header":{},"product-card":{},"footer":{},"buttons":{},"domain":{}}`;
+    }
+    if (section === 'hero') {
+      return `{"title":"string","subtitle":"string","bannerImage":"string|null","promoBannerEnabled":true,"promoBannerTitle":"string","promoBannerSubtitle":"string","promoBannerCta":"string","promoBannerTone":"accent|primary|mixed","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
+    }
+    if (section === 'header') {
+      return `{"logoText":"string","announcementText":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
+    }
+    if (section === 'product-card') {
+      return `{"cardStyle":"minimal|bordered|shadow|gradient","trendingTitle":"string","categoriesTitle":"string","bestSellingTitle":"string","allProductsTitle":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
+    }
+    if (section === 'footer') {
+      return `{"aboutTitle":"string","aboutDescription":"string","contactTitle":"string","contactEmail":"string","contactPhone":"string","contactAddress":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
+    }
+    if (section === 'buttons') {
+      return `{"buttonRadius":"soft|pill|square","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
+    }
+    return `{"customDomain":"string","hostedSubdomain":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
+  }
+
+  private sanitizeSectionPatch(
+    section: string,
+    source: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const patch: Record<string, unknown> = {};
+
+    const readString = (key: string, max = 220) => {
+      if (!this.hasOwn(source, key)) return null;
+      const raw = source[key];
+      if (typeof raw !== 'string') return null;
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      return trimmed.slice(0, max);
+    };
+
+    const readEnum = (key: string, values: readonly string[]) => {
+      const value = readString(key, 80)?.toLowerCase();
+      if (!value) return null;
+      return values.includes(value) ? value : null;
+    };
+
+    const readBoolean = (key: string) => {
+      if (!this.hasOwn(source, key)) return null;
+      const raw = source[key];
+      if (typeof raw === 'boolean') return raw;
+      if (typeof raw === 'string') {
+        const lowered = raw.trim().toLowerCase();
+        if (lowered === 'true') return true;
+        if (lowered === 'false') return false;
+      }
+      return null;
+    };
+
+    const readColor = (key: string) => {
+      const value = readString(key, 32);
+      if (!value) return null;
+      return this.normalizeColor(value);
+    };
+
+    const applySharedStyleFields = () => {
+      const theme = readEnum('themePreset', themePresetValues);
+      if (theme) {
+        patch.themePreset = theme;
+        Object.assign(patch, themePalette[theme as ThemePresetValue]);
+      }
+
+      const primaryColor = readColor('primaryColor');
+      if (primaryColor) patch.primaryColor = primaryColor;
+      const accentColor = readColor('accentColor');
+      if (accentColor) patch.accentColor = accentColor;
+      const backgroundColor = readColor('backgroundColor');
+      if (backgroundColor) patch.backgroundColor = backgroundColor;
+      const surfaceColor = readColor('surfaceColor');
+      if (surfaceColor) patch.surfaceColor = surfaceColor;
+      const textColor = readColor('textColor');
+      if (textColor) patch.textColor = textColor;
+      const mutedTextColor = readColor('mutedTextColor');
+      if (mutedTextColor) patch.mutedTextColor = mutedTextColor;
+    };
+
+    applySharedStyleFields();
+
+    if (section === 'hero') {
+      const title = readString('title', 140);
+      if (title) patch.title = title;
+      const subtitle = readString('subtitle', 220);
+      if (subtitle) patch.subtitle = subtitle;
+      const promoEnabled = readBoolean('promoBannerEnabled');
+      if (promoEnabled !== null) patch.promoBannerEnabled = promoEnabled;
+      const promoTitle = readString('promoBannerTitle', 140);
+      if (promoTitle) patch.promoBannerTitle = promoTitle;
+      const promoSubtitle = readString('promoBannerSubtitle', 220);
+      if (promoSubtitle) patch.promoBannerSubtitle = promoSubtitle;
+      const promoCta = readString('promoBannerCta', 60);
+      if (promoCta) patch.promoBannerCta = promoCta;
+      const promoTone = readEnum('promoBannerTone', promoBannerToneValues);
+      if (promoTone) patch.promoBannerTone = promoTone;
+      if (this.hasOwn(source, 'bannerImage')) {
+        const bannerRaw = source.bannerImage;
+        if (bannerRaw === null) {
+          patch.bannerImage = null;
+        } else {
+          const bannerImage = readString('bannerImage', 1200);
+          if (bannerImage) patch.bannerImage = bannerImage;
+        }
+      }
+      return patch;
+    }
+
+    if (section === 'header') {
+      const logoText = readString('logoText', 80);
+      if (logoText) patch.logoText = logoText;
+      const announcementText = readString('announcementText', 220);
+      if (announcementText) patch.announcementText = announcementText;
+      return patch;
+    }
+
+    if (section === 'product-card') {
+      const cardStyle = readEnum('cardStyle', cardStyleValues);
+      if (cardStyle) patch.cardStyle = cardStyle;
+      const trendingTitle = readString('trendingTitle', 80);
+      if (trendingTitle) patch.trendingTitle = trendingTitle;
+      const categoriesTitle = readString('categoriesTitle', 80);
+      if (categoriesTitle) patch.categoriesTitle = categoriesTitle;
+      const bestSellingTitle = readString('bestSellingTitle', 80);
+      if (bestSellingTitle) patch.bestSellingTitle = bestSellingTitle;
+      const allProductsTitle = readString('allProductsTitle', 80);
+      if (allProductsTitle) patch.allProductsTitle = allProductsTitle;
+      return patch;
+    }
+
+    if (section === 'footer') {
+      const aboutTitle = readString('aboutTitle', 90);
+      if (aboutTitle) patch.aboutTitle = aboutTitle;
+      const aboutDescription = readString('aboutDescription', 320);
+      if (aboutDescription) patch.aboutDescription = aboutDescription;
+      const contactTitle = readString('contactTitle', 90);
+      if (contactTitle) patch.contactTitle = contactTitle;
+      const contactEmail = readString('contactEmail', 160);
+      if (contactEmail) patch.contactEmail = contactEmail;
+      const contactPhone = readString('contactPhone', 60);
+      if (contactPhone) patch.contactPhone = contactPhone;
+      const contactAddress = readString('contactAddress', 220);
+      if (contactAddress) patch.contactAddress = contactAddress;
+      return patch;
+    }
+
+    if (section === 'buttons') {
+      const buttonRadius = readEnum('buttonRadius', buttonRadiusValues);
+      if (buttonRadius) patch.buttonRadius = buttonRadius;
+      const cardStyle = readEnum('cardStyle', cardStyleValues);
+      if (cardStyle) patch.cardStyle = cardStyle;
+      return patch;
+    }
+
+    if (this.hasOwn(source, 'customDomain')) {
+      const raw = source.customDomain;
+      if (typeof raw === 'string') {
+        patch.customDomain = raw.trim().toLowerCase();
+      }
+    }
+    if (this.hasOwn(source, 'hostedSubdomain')) {
+      const raw = source.hostedSubdomain;
+      if (typeof raw === 'string') {
+        patch.hostedSubdomain = raw.trim().toLowerCase();
+      }
+    }
+
+    return patch;
+  }
+
+  private generateSectionPatchFallback(
+    section: string,
+    prompt: string,
+    sectionState: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const text = prompt.toLowerCase();
+    const patch: Record<string, unknown> = {};
+    const quotedValue = this.extractQuotedValue(prompt);
+
+    const applyThemeFallback = () => {
+      if (text.includes('dark mode') || text.includes('dark theme')) {
+        patch.themePreset = 'slate';
+        Object.assign(patch, themePalette.slate);
+      } else if (text.includes('light mode') || text.includes('light theme')) {
+        patch.themePreset = 'aurora';
+        Object.assign(patch, themePalette.aurora);
+      } else if (text.includes('sand theme')) {
+        patch.themePreset = 'sand';
+        Object.assign(patch, themePalette.sand);
+      }
+
+      for (const [name, colors] of Object.entries({
+        blue: { primaryColor: '#2563eb', accentColor: '#06b6d4' },
+        green: { primaryColor: '#15803d', accentColor: '#22c55e' },
+        orange: { primaryColor: '#c2410c', accentColor: '#fb923c' },
+        red: { primaryColor: '#b91c1c', accentColor: '#f43f5e' },
+        teal: { primaryColor: '#0f766e', accentColor: '#2dd4bf' },
+        slate: { primaryColor: '#e2e8f0', accentColor: '#38bdf8' },
+      })) {
+        if (text.includes(name) && (text.includes('theme') || text.includes('color'))) {
+          patch.primaryColor = colors.primaryColor;
+          patch.accentColor = colors.accentColor;
+          break;
+        }
+      }
+    };
+
+    applyThemeFallback();
+
+    if (section === 'hero') {
+      if (text.includes('headline') || text.includes('hero title') || text.includes('hero heading') || text.includes('title')) {
+        patch.title =
+          quotedValue ||
+          this.extractTailAfterKeyword(prompt, [
+            'headline',
+            'hero title',
+            'hero heading',
+            'title',
+          ]) ||
+          this.asString(sectionState.title, '') ||
+          prompt.slice(0, 140);
+      }
+      if (text.includes('subtitle') || text.includes('tagline')) {
+        patch.subtitle =
+          quotedValue ||
+          this.extractTailAfterKeyword(prompt, ['subtitle', 'tagline']) ||
+          this.asString(sectionState.subtitle, '');
+      }
+      if (text.includes('add banner') || text.includes('show banner') || text.includes('enable banner')) {
+        patch.promoBannerEnabled = true;
+      }
+      if (text.includes('hide banner') || text.includes('disable banner') || text.includes('remove banner')) {
+        patch.promoBannerEnabled = false;
+      }
+      if ((text.includes('banner title') || text.includes('banner headline')) && quotedValue) {
+        patch.promoBannerTitle = quotedValue;
+        patch.promoBannerEnabled = true;
+      }
+      if ((text.includes('banner subtitle') || text.includes('banner text')) && quotedValue) {
+        patch.promoBannerSubtitle = quotedValue;
+        patch.promoBannerEnabled = true;
+      }
+      if ((text.includes('banner cta') || text.includes('banner button')) && quotedValue) {
+        patch.promoBannerCta = quotedValue;
+        patch.promoBannerEnabled = true;
+      }
+      if (text.includes('banner tone accent')) {
+        patch.promoBannerTone = 'accent';
+      }
+      if (text.includes('banner tone primary')) {
+        patch.promoBannerTone = 'primary';
+      }
+      if (text.includes('banner tone mixed')) {
+        patch.promoBannerTone = 'mixed';
+      }
+    }
+
+    if (section === 'header') {
+      if ((text.includes('logo') || text.includes('store name')) && quotedValue) {
+        patch.logoText = quotedValue;
+      }
+      if (text.includes('announcement') && quotedValue) {
+        patch.announcementText = quotedValue;
+      }
+    }
+
+    if (section === 'product-card') {
+      if (text.includes('gradient')) patch.cardStyle = 'gradient';
+      if (text.includes('shadow')) patch.cardStyle = 'shadow';
+      if (text.includes('minimal')) patch.cardStyle = 'minimal';
+      if (text.includes('border')) patch.cardStyle = 'bordered';
+      if ((text.includes('trending title') || text.includes('trending heading')) && quotedValue) {
+        patch.trendingTitle = quotedValue;
+      }
+      if ((text.includes('categories title') || text.includes('category title')) && quotedValue) {
+        patch.categoriesTitle = quotedValue;
+      }
+      if ((text.includes('best selling title') || text.includes('best selling heading')) && quotedValue) {
+        patch.bestSellingTitle = quotedValue;
+      }
+      if ((text.includes('all products title') || text.includes('all products heading')) && quotedValue) {
+        patch.allProductsTitle = quotedValue;
+      }
+    }
+
+    if (section === 'footer') {
+      if ((text.includes('about title') || text.includes('about heading')) && quotedValue) {
+        patch.aboutTitle = quotedValue;
+      }
+      if ((text.includes('about description') || text.includes('about text')) && quotedValue) {
+        patch.aboutDescription = quotedValue;
+      }
+      if ((text.includes('contact title') || text.includes('contact heading')) && quotedValue) {
+        patch.contactTitle = quotedValue;
+      }
+      const email = this.extractEmail(prompt);
+      if (email) patch.contactEmail = email;
+      const phone = this.extractPhone(prompt);
+      if (phone) patch.contactPhone = phone;
+      if ((text.includes('address') || text.includes('contact address')) && quotedValue) {
+        patch.contactAddress = quotedValue;
+      }
+    }
+
+    if (section === 'buttons') {
+      if (text.includes('pill')) patch.buttonRadius = 'pill';
+      if (text.includes('square')) patch.buttonRadius = 'square';
+      if (text.includes('soft') || text.includes('rounded')) patch.buttonRadius = 'soft';
+    }
+
+    if (section === 'domain') {
+      if (text.includes('clear custom domain') || text.includes('remove custom domain')) {
+        patch.customDomain = '';
+      }
+      const domain = this.extractDomain(prompt);
+      if (domain) {
+        patch.customDomain = domain;
+      }
+      if (text.includes('hosted subdomain') && quotedValue) {
+        patch.hostedSubdomain = quotedValue.toLowerCase();
+      }
+    }
+
+    return this.sanitizeSectionPatch(section, patch);
+  }
+
+  private hasOwn(source: Record<string, unknown>, key: string) {
+    return Object.prototype.hasOwnProperty.call(source, key);
+  }
+
+  private asUnknownRecord(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private normalizeColor(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    if (/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    const map: Record<string, string> = {
+      blue: '#2563eb',
+      green: '#16a34a',
+      orange: '#ea580c',
+      red: '#dc2626',
+      teal: '#0f766e',
+      cyan: '#0891b2',
+      black: '#111827',
+      white: '#ffffff',
+      gray: '#6b7280',
+      grey: '#6b7280',
+      purple: '#7c3aed',
+      pink: '#db2777',
+      yellow: '#ca8a04',
+    };
+    return map[trimmed.toLowerCase()] ?? null;
+  }
+
+  private extractEmail(prompt: string): string | null {
+    const match = prompt.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    return match?.[0]?.toLowerCase() ?? null;
+  }
+
+  private extractPhone(prompt: string): string | null {
+    const match = prompt.match(
+      /(?:\+?\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{3,4}/,
+    );
+    return match?.[0]?.trim() ?? null;
+  }
+
+  private extractDomain(prompt: string): string | null {
+    const match = prompt.match(
+      /\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\b/i,
+    );
+    return match?.[0]?.toLowerCase() ?? null;
+  }
+
+  private extractTailAfterKeyword(prompt: string, keywords: string[]) {
+    const lowered = prompt.toLowerCase();
+    for (const keyword of keywords) {
+      const index = lowered.indexOf(keyword);
+      if (index < 0) continue;
+      let tail = prompt
+        .slice(index + keyword.length)
+        .replace(/^[\s:=-]*(to|as)?\s*/i, '')
+        .trim();
+      tail = tail.split(/[,.;|]/)[0]?.trim() ?? '';
+      tail = tail.replace(/\b(and|then)\b.*$/i, '').trim();
+      tail = tail
+        .replace(
+          /\b(logo|domain|button|card|footer|header|contact|about|email|phone|cta|banner)\b.*$/i,
+          '',
+        )
+        .trim();
+      tail = tail.replace(/^["'`]+|["'`]+$/g, '').trim();
+      if (tail.length >= 3) return tail.slice(0, 220);
+    }
+    return null;
   }
 
   private applySectionPatch(

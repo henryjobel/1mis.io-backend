@@ -129,24 +129,6 @@ class UpdateMarketingDto {
   isGtmEnabled?: boolean;
 }
 
-class UpdateContentDto {
-  @IsOptional()
-  @IsObject()
-  hero?: Record<string, unknown>;
-
-  @IsOptional()
-  @IsObject()
-  navigation?: Record<string, unknown>;
-
-  @IsOptional()
-  @IsObject()
-  footer?: Record<string, unknown>;
-
-  @IsOptional()
-  @IsObject()
-  sections?: Record<string, unknown>;
-}
-
 class ConnectDomainDto {
   @IsString()
   domain!: string;
@@ -248,7 +230,7 @@ export class StoresController {
   @Patch(':id/content')
   upsertContent(
     @Param('id') id: string,
-    @Body() dto: UpdateContentDto,
+    @Body() dto: Record<string, unknown>,
     @CurrentUser() user: RequestUser,
   ) {
     return this.storesService.upsertContent(

@@ -4,6 +4,8 @@ export declare class PublicStoreService {
     private readonly prisma;
     constructor(prisma: PrismaService);
     meta(slug: string): Promise<{
+        content: string | number | boolean | Prisma.JsonObject | Prisma.JsonArray;
+        domain: string | number | boolean | Prisma.JsonObject | Prisma.JsonArray;
         trackingConfig: {
             id: string;
             createdAt: Date;
@@ -22,7 +24,6 @@ export declare class PublicStoreService {
             preset: string | null;
             customJson: Prisma.JsonValue | null;
         } | null;
-    } & {
         id: string;
         name: string;
         createdAt: Date;

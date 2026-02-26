@@ -29,6 +29,8 @@ export declare class PublicStoreController {
     private readonly publicStoreService;
     constructor(publicStoreService: PublicStoreService);
     meta(slug: string): Promise<{
+        content: string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray;
+        domain: string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray;
         trackingConfig: {
             id: string;
             createdAt: Date;
@@ -47,7 +49,6 @@ export declare class PublicStoreController {
             preset: string | null;
             customJson: import("@prisma/client/runtime/library").JsonValue | null;
         } | null;
-    } & {
         id: string;
         name: string;
         createdAt: Date;

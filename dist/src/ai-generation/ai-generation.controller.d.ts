@@ -117,20 +117,7 @@ export declare class AiGenerationController {
         dryRun: boolean;
         persisted: boolean;
         historyId: null;
-        patch: {
-            hero: {
-                title: string;
-                aiPrompt: string;
-                updatedAt: string;
-            };
-        } | {
-            [x: string]: {
-                aiPrompt: string;
-                aiSummary: string;
-                updatedAt: string;
-            };
-            hero?: undefined;
-        };
+        patch: Record<string, unknown>;
         preview: Record<string, unknown>;
     } | {
         section: string;
@@ -138,20 +125,7 @@ export declare class AiGenerationController {
         dryRun: boolean;
         persisted: boolean;
         historyId: `${string}-${string}-${string}-${string}-${string}`;
-        patch: {
-            hero: {
-                title: string;
-                aiPrompt: string;
-                updatedAt: string;
-            };
-        } | {
-            [x: string]: {
-                aiPrompt: string;
-                aiSummary: string;
-                updatedAt: string;
-            };
-            hero?: undefined;
-        };
+        patch: Record<string, unknown>;
         preview: Record<string, unknown>;
     }>;
     sectionHistory(storeId: string): Promise<{

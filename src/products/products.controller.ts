@@ -98,6 +98,10 @@ class CreateProductDto {
   stock?: number;
 
   @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
   @IsBoolean()
   reviewsEnabled?: boolean;
 

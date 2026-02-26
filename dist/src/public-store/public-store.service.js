@@ -24,7 +24,19 @@ let PublicStoreService = class PublicStoreService {
         });
         if (!store)
             throw new common_1.NotFoundException('Store not found');
-        return store;
+        const [contentRow, domainRow] = await Promise.all([
+            this.prisma.platformSetting.findUnique({
+                where: { key: `store_content:${store.id}` },
+            }),
+            this.prisma.platformSetting.findUnique({
+                where: { key: `domain:${store.id}` },
+            }),
+        ]);
+        return {
+            ...store,
+            content: contentRow?.valueJson ?? {},
+            domain: domainRow?.valueJson ?? {},
+        };
     }
     async products(slug, options) {
         const store = await this.getActiveStore(slug);

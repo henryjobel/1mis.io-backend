@@ -16,6 +16,7 @@ declare class CreateProductDto {
     discountedPrice?: number;
     price?: number;
     stock?: number;
+    status?: string;
     reviewsEnabled?: boolean;
     stockTrackingEnabled?: boolean;
     discountEndsAt?: string;
