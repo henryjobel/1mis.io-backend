@@ -21,6 +21,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     const host = this.configService.get<string>('REDIS_HOST');
     const port = this.configService.get<number>('REDIS_PORT');
+    const password = this.configService.get<string>('REDIS_PASSWORD');
 
     if (!host || !port) {
       this.logger.warn('Redis config missing. Queue runs in fallback mode.');
@@ -28,7 +29,7 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      const connection = { host, port };
+      const connection = { host, port, password, tls: {} };
       this.queue = new Queue('ai-generation', { connection });
       this.worker = new Worker(
         'ai-generation',
