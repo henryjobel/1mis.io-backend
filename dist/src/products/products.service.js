@@ -13,6 +13,7 @@ exports.ProductsService = exports.PRODUCT_AI_FIELDS = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const zod_1 = require("zod");
+const billing_service_1 = require("../billing/billing.service");
 const audit_service_1 = require("../common/audit.service");
 const prisma_service_1 = require("../prisma/prisma.service");
 exports.PRODUCT_AI_FIELDS = [
@@ -45,15 +46,19 @@ const productAiPayloadSchema = zod_1.z.object({
     variants: zod_1.z.array(productAiVariantSchema).min(1).max(20),
     sku: zod_1.z.string().min(3),
     actionItems: zod_1.z.array(zod_1.z.string().min(2)).min(1).max(10),
+    tags: zod_1.z.array(zod_1.z.string().min(1)).optional().default([]),
+    features: zod_1.z.array(zod_1.z.string().min(2)).optional().default([]),
 });
 let ProductsService = class ProductsService {
-    constructor(prisma, configService, auditService) {
+    constructor(prisma, configService, auditService, billingService) {
         this.prisma = prisma;
         this.configService = configService;
         this.auditService = auditService;
+        this.billingService = billingService;
     }
     async create(storeId, data, actor) {
         const writeData = this.toCreateData(storeId, data);
+        await this.billingService.assertProductCreateAllowed(storeId, 1);
         const product = await this.prisma.product.create({
             data: writeData,
         });
@@ -65,6 +70,7 @@ let ProductsService = class ProductsService {
             entityId: product.id,
             metaJson: { storeId },
         });
+        await this.billingService.syncProductsUsage(storeId);
         return product;
     }
     async list(storeId, options) {
@@ -154,6 +160,7 @@ let ProductsService = class ProductsService {
             entityType: 'Product',
             entityId: productId,
         });
+        await this.billingService.syncProductsUsage(storeId);
         return deleted;
     }
     async duplicate(storeId, productId, data, actor) {
@@ -163,6 +170,7 @@ let ProductsService = class ProductsService {
         }));
         if (!source)
             throw new common_1.NotFoundException('Product not found');
+        await this.billingService.assertProductCreateAllowed(storeId, 1);
         const duplicated = await this.prisma.$transaction(async (tx) => {
             const cloned = await tx.product.create({
                 data: {
@@ -222,6 +230,7 @@ let ProductsService = class ProductsService {
                 sourceProductId: source.id,
             },
         });
+        await this.billingService.syncProductsUsage(storeId);
         return duplicated;
     }
     async updateDelivery(storeId, productId, enabled, actor) {
@@ -253,6 +262,7 @@ let ProductsService = class ProductsService {
         if (!imageUrls.length && !data.prompt?.trim()) {
             throw new common_1.BadRequestException('prompt or imageUrls is required');
         }
+        await this.billingService.consumeAiUsage(storeId, 1);
         const generated = await this.generateProductIntelligence({
             prompt: data.prompt,
             imageUrls,
@@ -281,6 +291,7 @@ let ProductsService = class ProductsService {
         });
         if (!product)
             throw new common_1.NotFoundException('Product not found');
+        await this.billingService.consumeAiUsage(storeId, 1);
         const imageUrls = this.normalizeImageUrls(data.imageUrls);
         const generated = await this.generateProductIntelligence({
             prompt: data.prompt,
@@ -612,13 +623,33 @@ let ProductsService = class ProductsService {
         try {
             const model = this.configService.get('GEMINI_MODEL', 'gemini-1.5-flash');
             const instruction = this.buildAiInstruction(input);
+            const contentParts = [];
+            const imagePromises = input.imageUrls.slice(0, 3).map(async (url) => {
+                try {
+                    const imageData = await this.fetchImageAsBase64(url);
+                    if (imageData) {
+                        return { inline_data: imageData };
+                    }
+                    return null;
+                }
+                catch {
+                    return null;
+                }
+            });
+            const imageResults = await Promise.all(imagePromises);
+            for (const result of imageResults) {
+                if (result) {
+                    contentParts.push(result);
+                }
+            }
+            contentParts.push({ text: instruction });
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [
                         {
-                            parts: [{ text: instruction }],
+                            parts: contentParts,
                         },
                     ],
                     generationConfig: {
@@ -630,7 +661,7 @@ let ProductsService = class ProductsService {
             if (!response.ok)
                 return fallback;
             const raw = (await response.json());
-            const text = raw.candidates?.[0]?.content?.parts?.[0]?.text;
+            const text = raw.candidates?.[0]?.content?.parts?.find(p => p.text)?.text;
             if (!text)
                 return fallback;
             const parsed = JSON.parse(this.stripCodeFence(text));
@@ -639,6 +670,37 @@ let ProductsService = class ProductsService {
         }
         catch {
             return fallback;
+        }
+    }
+    async fetchImageAsBase64(url) {
+        try {
+            if (url.startsWith('data:')) {
+                const match = url.match(/^data:([^;]+);base64,(.+)$/);
+                if (match) {
+                    return { mime_type: match[1], data: match[2] };
+                }
+                return null;
+            }
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Accept': 'image/*' },
+            });
+            if (!response.ok)
+                return null;
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            const mimeType = contentType.split(';')[0].trim();
+            if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mimeType)) {
+                return null;
+            }
+            const arrayBuffer = await response.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString('base64');
+            if (base64.length > 4 * 1024 * 1024) {
+                return null;
+            }
+            return { mime_type: mimeType, data: base64 };
+        }
+        catch {
+            return null;
         }
     }
     buildAiInstruction(input) {
@@ -666,26 +728,37 @@ let ProductsService = class ProductsService {
                 })),
             }
             : null;
-        return `You are an ecommerce product intelligence generator.
+        return `You are an AI ecommerce product intelligence generator with vision capabilities.
+ANALYZE THE PRODUCT IMAGE(S) carefully and generate complete product data.
+
 Return ONLY valid JSON with this exact shape:
 {
-  "productName": string,
-  "shortDescription": string,
-  "longDescription": string,
-  "seoTitle": string,
-  "seoMetaDescription": string,
-  "suggestedPrice": number,
-  "discountedPrice": number | null,
+  "productName": string (creative, marketable name based on what you see in the image),
+  "shortDescription": string (compelling 1-2 sentence sales pitch),
+  "longDescription": string (detailed 3-4 paragraph description with features and benefits),
+  "seoTitle": string (60 chars max, includes main keyword),
+  "seoMetaDescription": string (155 chars max, compelling meta description),
+  "suggestedPrice": number (realistic price based on product type and quality seen),
+  "discountedPrice": number | null (optional promotional price),
   "variants": [{"optionName": string, "optionValue": string, "sku": string, "price": number, "stock": number}],
-  "sku": string,
-  "actionItems": string[]
+  "sku": string (generated SKU code),
+  "tags": string[] (5-8 relevant search tags),
+  "features": string[] (3-5 key product features from image analysis),
+  "actionItems": string[] (1-3 seller tips like "Add lifestyle photos" or "Highlight premium materials")
 }
+
+Image Analysis Guidelines:
+- Identify product type, category, material, color, style from the image
+- Suggest realistic pricing based on perceived quality and product category
+- Generate variants based on visible options (colors, sizes) or common variants for this product type
+- Create SEO content optimized for ecommerce search
+
 Rules:
-- 1 to 8 variants
-- stock must be integer >= 0
-- suggestedPrice must be > 0
-- discountedPrice must be null or smaller than suggestedPrice
-- actionItems should be practical and short
+- 1 to 8 variants (generate Size/Color variants appropriate for the product type)
+- stock must be integer >= 0 (suggest 10-50 for new products)
+- suggestedPrice must be > 0 and realistic for the product category
+- discountedPrice must be null or 10-30% less than suggestedPrice
+- actionItems should be practical seller advice
 Region: ${input.region ?? 'global'}
 Currency: ${(input.currency ?? 'USD').toUpperCase()}
 Prompt: ${input.prompt ?? '(no prompt)'}
@@ -748,6 +821,8 @@ ${existingContext ? JSON.stringify(existingContext) : '(none)'}`;
                 'Highlight key product benefit above the fold',
                 'Add trust badge near Add to Cart button',
             ],
+            tags: ['product'],
+            features: [],
         }, input);
     }
     normalizeGeneratedPayload(payload, input) {
@@ -788,6 +863,12 @@ ${existingContext ? JSON.stringify(existingContext) : '(none)'}`;
         const actionItems = Array.from(new Set(payload.actionItems
             .map((item) => item.trim())
             .filter((item) => item.length > 1))).slice(0, 8);
+        const tags = Array.from(new Set((payload.tags ?? [])
+            .map((tag) => tag.trim().toLowerCase())
+            .filter((tag) => tag.length > 0))).slice(0, 10);
+        const features = Array.from(new Set((payload.features ?? [])
+            .map((feature) => feature.trim())
+            .filter((feature) => feature.length > 1))).slice(0, 8);
         return {
             productName,
             shortDescription: payload.shortDescription.trim(),
@@ -801,6 +882,8 @@ ${existingContext ? JSON.stringify(existingContext) : '(none)'}`;
             actionItems: actionItems.length
                 ? actionItems
                 : ['Add one strong product benefit in first line of description'],
+            tags: tags.length ? tags : ['product'],
+            features: features.length ? features : [],
         };
     }
     inferBaseName(existingTitle, prompt, imageUrls) {
@@ -922,6 +1005,7 @@ exports.ProductsService = ProductsService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         config_1.ConfigService,
-        audit_service_1.AuditService])
+        audit_service_1.AuditService,
+        billing_service_1.BillingService])
 ], ProductsService);
 //# sourceMappingURL=products.service.js.map

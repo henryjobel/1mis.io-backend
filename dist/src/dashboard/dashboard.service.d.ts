@@ -31,7 +31,7 @@ export declare class DashboardService {
             codEnabled: boolean;
             stripeEnabled: boolean;
             sslCommerzEnabled: boolean;
-            mode: "test" | "live";
+            mode: "live" | "test";
         };
     }>;
     private toUiStatus;

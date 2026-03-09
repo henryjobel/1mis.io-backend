@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { AiJobStatus, Prisma, Role, StoreStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
@@ -38,6 +39,8 @@ const sectionNames = [
   'buttons',
   'domain',
   'site',
+  'menu',
+  'sections',
 ] as const;
 
 const themePresetValues = ['aurora', 'sand', 'slate'] as const;
@@ -93,6 +96,7 @@ export class AiGenerationService implements OnModuleInit {
     private readonly queueService: QueueService,
     private readonly configService: ConfigService,
     private readonly auditService: AuditService,
+    private readonly billingService: BillingService,
   ) {}
 
   onModuleInit() {
@@ -107,6 +111,8 @@ export class AiGenerationService implements OnModuleInit {
     prompt: string;
     inputImagesJson?: unknown;
   }) {
+    await this.billingService.consumeAiUsage(params.storeId, 1);
+
     const job = await this.prisma.aiGenerationJob.create({
       data: {
         storeId: params.storeId,
@@ -154,6 +160,13 @@ export class AiGenerationService implements OnModuleInit {
     }
 
     const parsed = aiResultSchema.parse(job.resultJson);
+    await this.billingService.assertProductCreateAllowed(
+      storeId,
+      parsed.products.length,
+      {
+        existingProductsCount: options.replaceProducts ? 0 : undefined,
+      },
+    );
     const historyId = randomUUID();
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -310,6 +323,7 @@ export class AiGenerationService implements OnModuleInit {
         createdProductsCount: result.createdProductsCount,
       },
     });
+    await this.billingService.syncProductsUsage(storeId);
 
     return {
       jobId: job.id,
@@ -470,6 +484,7 @@ export class AiGenerationService implements OnModuleInit {
     if (!prompt) {
       throw new BadRequestException('prompt is required');
     }
+    await this.billingService.consumeAiUsage(storeId, 1);
 
     const contentKey = `store_content:${storeId}`;
     const contentRow = await this.prisma.platformSetting.findUnique({
@@ -783,11 +798,26 @@ export class AiGenerationService implements OnModuleInit {
     const projectName = this.configService.get<string>('GEMINI_PROJECT_NAME');
     const projectId = this.configService.get<string>('GEMINI_PROJECT_ID');
 
-    const instruction = `You are a strict JSON generator for ecommerce store setup. Return only JSON matching this shape:\n{
-  "hero": {"title": string, "subtitle": string},
-  "products": [{"title": string, "price": number, "stock": number}],
-  "sections": string[]
-}\nProject: ${projectName ?? 'n/a'} (${projectId ?? 'n/a'})\nInput prompt: ${input.prompt}\nInput images count: ${input.inputImages.length}`;
+    // Fetch images as base64 for vision analysis
+    const imageUrls = input.inputImages
+      .filter((img): img is string => typeof img === 'string' && img.startsWith('http'))
+      .slice(0, 5);
+
+    const imagePartsPromises = imageUrls.map((url) => this.fetchImageAsBase64(url));
+    const imageResults = await Promise.all(imagePartsPromises);
+    const imageParts = imageResults
+      .filter((img): img is { mimeType: string; data: string } => img !== null)
+      .map((img) => ({ inline_data: { mime_type: img.mimeType, data: img.data } }));
+
+    const hasImages = imageParts.length > 0;
+    const instruction = hasImages
+      ? `You are a vision-enabled AI for ecommerce. Analyze the provided product images carefully and create a complete store plan.\n\nFor each image, identify:\n- Product type, category, and features\n- Suggested product name, price (USD), and stock\n- Brand style and color palette for the store\n\nReturn ONLY valid JSON matching this shape:\n{\n  "hero": {"title": "Store headline based on products", "subtitle": "Compelling subheadline"},\n  "products": [{"title": "Product name from image", "price": number, "stock": number}],\n  "sections": ["trending", "categories", "best-selling", "about", "contact"]\n}\n\nUser context: ${input.prompt || 'Create a store based on these product images'}`
+      : `You are a strict JSON generator for ecommerce store setup. Return only JSON matching this shape:\n{\n  "hero": {"title": string, "subtitle": string},\n  "products": [{"title": string, "price": number, "stock": number}],\n  "sections": string[]\n}\nProject: ${projectName ?? 'n/a'} (${projectId ?? 'n/a'})\nInput prompt: ${input.prompt}`;
+
+    const contentParts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [
+      { text: instruction },
+      ...imageParts,
+    ];
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -799,7 +829,7 @@ export class AiGenerationService implements OnModuleInit {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            contents: [{ parts: [{ text: instruction }] }],
+            contents: [{ parts: contentParts }],
             generationConfig: {
               temperature: 0.3,
               maxOutputTokens: 1024,
@@ -860,6 +890,22 @@ export class AiGenerationService implements OnModuleInit {
       .replace(/^```\s*/i, '')
       .replace(/```\s*$/i, '')
       .trim();
+  }
+
+  private async fetchImageAsBase64(
+    url: string,
+  ): Promise<{ mimeType: string; data: string } | null> {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (!response.ok) return null;
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const buffer = await response.arrayBuffer();
+      const base64 = Buffer.from(buffer).toString('base64');
+      return { mimeType: contentType, data: base64 };
+    } catch (error) {
+      this.logger.warn(`Failed to fetch image: ${url} - ${(error as Error).message}`);
+      return null;
+    }
   }
 
   private async generateSectionPatch(
@@ -977,7 +1023,7 @@ export class AiGenerationService implements OnModuleInit {
       'GEMINI_MODEL',
       'gemini-1.5-flash',
     );
-    const instruction = `You convert one prompt into a full ecommerce site patch. Return only JSON with this shape:\n{\n  "summary": "short summary",\n  "hero": {"title":"string","subtitle":"string","bannerImage":"string|null","promoBannerEnabled":true,"promoBannerTitle":"string","promoBannerSubtitle":"string","promoBannerCta":"string","promoBannerTone":"accent|primary|mixed","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "header": {"logoText":"string","announcementText":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "product-card": {"cardStyle":"minimal|bordered|shadow|gradient","trendingTitle":"string","categoriesTitle":"string","bestSellingTitle":"string","allProductsTitle":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "footer": {"aboutTitle":"string","aboutDescription":"string","contactTitle":"string","contactEmail":"string","contactPhone":"string","contactAddress":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "buttons": {"buttonRadius":"soft|pill|square","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "domain": {"customDomain":"string","hostedSubdomain":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}\n}\nCurrent store content JSON: ${JSON.stringify(
+    const instruction = `You convert one prompt into a full ecommerce site patch. Return only JSON with this shape:\n{\n  "summary": "short summary",\n  "hero": {"title":"string","subtitle":"string","bannerImage":"string|null","promoBannerEnabled":true,"promoBannerTitle":"string","promoBannerSubtitle":"string","promoBannerCta":"string","promoBannerTone":"accent|primary|mixed","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "header": {"logoText":"string","announcementText":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "product-card": {"cardStyle":"minimal|bordered|shadow|gradient","trendingTitle":"string","categoriesTitle":"string","bestSellingTitle":"string","allProductsTitle":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "footer": {"aboutTitle":"string","aboutDescription":"string","contactTitle":"string","contactEmail":"string","contactPhone":"string","contactAddress":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "buttons": {"buttonRadius":"soft|pill|square","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "domain": {"customDomain":"string","hostedSubdomain":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"},\n  "menu": {"menuItems":[{"id":"string","label":"string","page":"home|catalog|about|contact|faq|features","visible":true,"order":1}]},\n  "sections": {"customSections":{"faq":{"enabled":true,"title":"string","items":[{"id":"string","question":"string","answer":"string"}]},"features":{"enabled":true,"title":"string","items":[{"id":"string","icon":"emoji","title":"string","description":"string"}]},"testimonials":{"enabled":true,"title":"string","items":[{"id":"string","name":"string","role":"string","content":"string","rating":5}]}}}\n}\nCurrent store content JSON: ${JSON.stringify(
       current,
     )}\nUser prompt: ${prompt}\nRules:\n- Include only fields that should change.\n- Keep text concise and practical.\n- Never include markdown or explanation text.`;
 
@@ -1172,7 +1218,7 @@ export class AiGenerationService implements OnModuleInit {
 
   private sectionSchemaHint(section: string) {
     if (section === 'site') {
-      return `{"summary":"string","hero":{},"header":{},"product-card":{},"footer":{},"buttons":{},"domain":{}}`;
+      return `{"summary":"string","hero":{},"header":{},"product-card":{},"footer":{},"buttons":{},"domain":{},"menu":{},"sections":{}}`;
     }
     if (section === 'hero') {
       return `{"title":"string","subtitle":"string","bannerImage":"string|null","promoBannerEnabled":true,"promoBannerTitle":"string","promoBannerSubtitle":"string","promoBannerCta":"string","promoBannerTone":"accent|primary|mixed","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
@@ -1188,6 +1234,12 @@ export class AiGenerationService implements OnModuleInit {
     }
     if (section === 'buttons') {
       return `{"buttonRadius":"soft|pill|square","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
+    }
+    if (section === 'menu') {
+      return `{"menuItems":[{"id":"string","label":"string","page":"home|catalog|about|contact|faq|features|privacy|terms","visible":true,"order":1}]}`;
+    }
+    if (section === 'sections') {
+      return `{"customSections":{"faq":{"enabled":true,"title":"string","subtitle":"string","items":[{"id":"string","question":"string","answer":"string"}]},"features":{"enabled":true,"title":"string","subtitle":"string","layout":"grid|list|cards","items":[{"id":"string","icon":"emoji","title":"string","description":"string"}]},"testimonials":{"enabled":true,"title":"string","subtitle":"string","layout":"carousel|grid|masonry","items":[{"id":"string","name":"string","role":"string","content":"string","rating":5}]}}}`;
     }
     return `{"customDomain":"string","hostedSubdomain":"string","themePreset":"aurora|sand|slate","primaryColor":"#hex","accentColor":"#hex","backgroundColor":"#hex","surfaceColor":"#hex","textColor":"#hex","mutedTextColor":"#hex"}`;
   }
@@ -1324,6 +1376,97 @@ export class AiGenerationService implements OnModuleInit {
       if (buttonRadius) patch.buttonRadius = buttonRadius;
       const cardStyle = readEnum('cardStyle', cardStyleValues);
       if (cardStyle) patch.cardStyle = cardStyle;
+      return patch;
+    }
+
+    if (section === 'menu') {
+      if (this.hasOwn(source, 'menuItems') && Array.isArray(source.menuItems)) {
+        const menuItems = (source.menuItems as unknown[])
+          .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+          .map((item, index) => ({
+            id: typeof item.id === 'string' ? item.id : `menu-${index}`,
+            label: typeof item.label === 'string' ? item.label.slice(0, 50) : `Menu ${index + 1}`,
+            page: typeof item.page === 'string' ? item.page : 'home',
+            visible: typeof item.visible === 'boolean' ? item.visible : true,
+            order: typeof item.order === 'number' ? item.order : index + 1,
+          }));
+        patch.menuItems = menuItems;
+      }
+      return patch;
+    }
+
+    if (section === 'sections') {
+      if (this.hasOwn(source, 'customSections') && typeof source.customSections === 'object') {
+        const cs = source.customSections as Record<string, unknown>;
+        const customSections: Record<string, unknown> = {};
+
+        // FAQ
+        if (this.hasOwn(cs, 'faq') && typeof cs.faq === 'object') {
+          const faq = cs.faq as Record<string, unknown>;
+          customSections.faq = {
+            enabled: typeof faq.enabled === 'boolean' ? faq.enabled : true,
+            title: typeof faq.title === 'string' ? faq.title.slice(0, 100) : 'FAQ',
+            subtitle: typeof faq.subtitle === 'string' ? faq.subtitle.slice(0, 200) : '',
+            items: Array.isArray(faq.items)
+              ? (faq.items as unknown[])
+                  .filter((i): i is Record<string, unknown> => typeof i === 'object' && i !== null)
+                  .map((i, idx) => ({
+                    id: typeof i.id === 'string' ? i.id : `faq-${idx}`,
+                    question: typeof i.question === 'string' ? i.question.slice(0, 200) : '',
+                    answer: typeof i.answer === 'string' ? i.answer.slice(0, 500) : '',
+                  }))
+              : [],
+          };
+        }
+
+        // Features
+        if (this.hasOwn(cs, 'features') && typeof cs.features === 'object') {
+          const features = cs.features as Record<string, unknown>;
+          customSections.features = {
+            enabled: typeof features.enabled === 'boolean' ? features.enabled : true,
+            title: typeof features.title === 'string' ? features.title.slice(0, 100) : 'Why Choose Us',
+            subtitle: typeof features.subtitle === 'string' ? features.subtitle.slice(0, 200) : '',
+            layout: ['grid', 'list', 'cards'].includes(features.layout as string) ? features.layout : 'grid',
+            items: Array.isArray(features.items)
+              ? (features.items as unknown[])
+                  .filter((i): i is Record<string, unknown> => typeof i === 'object' && i !== null)
+                  .map((i, idx) => ({
+                    id: typeof i.id === 'string' ? i.id : `feat-${idx}`,
+                    icon: typeof i.icon === 'string' ? i.icon.slice(0, 10) : '✨',
+                    title: typeof i.title === 'string' ? i.title.slice(0, 100) : '',
+                    description: typeof i.description === 'string' ? i.description.slice(0, 300) : '',
+                  }))
+              : [],
+          };
+        }
+
+        // Testimonials
+        if (this.hasOwn(cs, 'testimonials') && typeof cs.testimonials === 'object') {
+          const testimonials = cs.testimonials as Record<string, unknown>;
+          customSections.testimonials = {
+            enabled: typeof testimonials.enabled === 'boolean' ? testimonials.enabled : true,
+            title: typeof testimonials.title === 'string' ? testimonials.title.slice(0, 100) : 'Testimonials',
+            subtitle: typeof testimonials.subtitle === 'string' ? testimonials.subtitle.slice(0, 200) : '',
+            layout: ['carousel', 'grid', 'masonry'].includes(testimonials.layout as string) ? testimonials.layout : 'grid',
+            items: Array.isArray(testimonials.items)
+              ? (testimonials.items as unknown[])
+                  .filter((i): i is Record<string, unknown> => typeof i === 'object' && i !== null)
+                  .map((i, idx) => ({
+                    id: typeof i.id === 'string' ? i.id : `test-${idx}`,
+                    name: typeof i.name === 'string' ? i.name.slice(0, 50) : '',
+                    role: typeof i.role === 'string' ? i.role.slice(0, 50) : '',
+                    content: typeof i.content === 'string' ? i.content.slice(0, 500) : '',
+                    avatar: typeof i.avatar === 'string' ? i.avatar : undefined,
+                    rating: typeof i.rating === 'number' ? Math.min(5, Math.max(1, i.rating)) : 5,
+                  }))
+              : [],
+          };
+        }
+
+        if (Object.keys(customSections).length) {
+          patch.customSections = customSections;
+        }
+      }
       return patch;
     }
 

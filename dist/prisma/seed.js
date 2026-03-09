@@ -3,7 +3,61 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const bcrypt_1 = require("bcrypt");
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
+const planSeeds = [
+    {
+        key: 'free',
+        name: 'Free',
+        priceBdt: 0,
+        billingCycleDays: 30,
+        productLimit: 5,
+        aiLimit: 20,
+        storageLimitMb: 512,
+        customDomainAllowed: false,
+        advancedAiEnabled: false,
+        analyticsEnabled: false,
+        prioritySupport: false,
+        isActive: true,
+        sortOrder: 1,
+    },
+    {
+        key: 'starter',
+        name: 'Starter',
+        priceBdt: 499,
+        billingCycleDays: 30,
+        productLimit: 50,
+        aiLimit: 250,
+        storageLimitMb: 5120,
+        customDomainAllowed: true,
+        advancedAiEnabled: false,
+        analyticsEnabled: false,
+        prioritySupport: false,
+        isActive: true,
+        sortOrder: 2,
+    },
+    {
+        key: 'growth',
+        name: 'Growth',
+        priceBdt: 1499,
+        billingCycleDays: 30,
+        productLimit: null,
+        aiLimit: null,
+        storageLimitMb: 25600,
+        customDomainAllowed: true,
+        advancedAiEnabled: true,
+        analyticsEnabled: true,
+        prioritySupport: true,
+        isActive: true,
+        sortOrder: 3,
+    },
+];
 async function main() {
+    for (const plan of planSeeds) {
+        await prisma.plan.upsert({
+            where: { key: plan.key },
+            create: plan,
+            update: plan,
+        });
+    }
     const email = 'admin@1mis.io';
     const existing = await prisma.user.findUnique({ where: { email } });
     if (!existing) {
@@ -16,7 +70,7 @@ async function main() {
             },
         });
     }
-    console.log('Seed complete: super admin ready -> admin@1mis.io / admin12345');
+    console.log('Seed complete: plans ready + super admin -> admin@1mis.io / admin12345');
 }
 main()
     .catch((error) => {

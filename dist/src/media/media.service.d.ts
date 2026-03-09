@@ -1,19 +1,21 @@
 import { ConfigService } from '@nestjs/config';
 import { Prisma, Role } from '@prisma/client';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 export declare class MediaService {
     private readonly prisma;
     private readonly configService;
     private readonly auditService;
-    constructor(prisma: PrismaService, configService: ConfigService, auditService: AuditService);
+    private readonly billingService;
+    constructor(prisma: PrismaService, configService: ConfigService, auditService: AuditService, billingService: BillingService);
     list(storeId: string): Prisma.PrismaPromise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        storeId: string;
         url: string;
+        storeId: string;
         altText: string | null;
     }[]>;
     createUploadSession(storeId: string, data: {
@@ -68,8 +70,8 @@ export declare class MediaService {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        storeId: string;
         url: string;
+        storeId: string;
         altText: string | null;
     }>;
     completeUpload(storeId: string, data: {
@@ -84,8 +86,8 @@ export declare class MediaService {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        storeId: string;
         url: string;
+        storeId: string;
         altText: string | null;
     }>;
     remove(storeId: string, assetId: string, actor: {
@@ -96,8 +98,8 @@ export declare class MediaService {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        storeId: string;
         url: string;
+        storeId: string;
         altText: string | null;
     }>;
     private buildAssetKey;
@@ -105,4 +107,7 @@ export declare class MediaService {
     private buildThumbnailUrl;
     private buildUploadSignature;
     private readUploadSession;
+    private mediaAssetMetaKey;
+    private readStoredAssetSize;
+    private bytesToMegabytes;
 }

@@ -1,10 +1,12 @@
 import { Prisma, Role, StoreStatus } from '@prisma/client';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 export declare class StoresService {
     private readonly prisma;
     private readonly auditService;
-    constructor(prisma: PrismaService, auditService: AuditService);
+    private readonly billingService;
+    constructor(prisma: PrismaService, auditService: AuditService, billingService: BillingService);
     create(ownerId: string, data: {
         name: string;
         slug: string;
@@ -133,8 +135,8 @@ export declare class StoresService {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: Prisma.JsonValue;
     }>;
     getContent(storeId: string): Promise<string | number | boolean | Prisma.JsonObject | Prisma.JsonArray>;
@@ -142,24 +144,24 @@ export declare class StoresService {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: Prisma.JsonValue;
     }>;
     connectDomain(storeId: string, domain: string, actor: {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: Prisma.JsonValue;
     }>;
     verifyDomain(storeId: string, actor: {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: Prisma.JsonValue;
     }>;
     buyDomain(storeId: string, data: {
@@ -169,16 +171,16 @@ export declare class StoresService {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: Prisma.JsonValue;
     }>;
     refreshSsl(storeId: string, actor: {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: Prisma.JsonValue;
     }>;
     assertStoreAccess(storeId: string, user: {

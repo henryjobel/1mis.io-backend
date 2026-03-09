@@ -10,8 +10,8 @@ export declare class PaymentsService {
         id: string;
         role: Role;
     }): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: Prisma.JsonValue;
     }>;
     createIntent(storeId: string, data: {
@@ -28,12 +28,12 @@ export declare class PaymentsService {
         updatedAt: Date;
         storeId: string;
         status: string;
-        currency: string;
-        orderId: string | null;
         provider: string;
         providerRef: string | null;
-        amount: Prisma.Decimal;
         metadata: Prisma.JsonValue | null;
+        amount: Prisma.Decimal;
+        currency: string;
+        orderId: string | null;
     }>;
     confirm(storeId: string, data: {
         transactionId: string;
@@ -48,12 +48,12 @@ export declare class PaymentsService {
         updatedAt: Date;
         storeId: string;
         status: string;
-        currency: string;
-        orderId: string | null;
         provider: string;
         providerRef: string | null;
-        amount: Prisma.Decimal;
         metadata: Prisma.JsonValue | null;
+        amount: Prisma.Decimal;
+        currency: string;
+        orderId: string | null;
     }>;
     refund(storeId: string, data: {
         transactionId: string;
@@ -67,12 +67,12 @@ export declare class PaymentsService {
         updatedAt: Date;
         storeId: string;
         status: string;
-        currency: string;
-        orderId: string | null;
         provider: string;
         providerRef: string | null;
-        amount: Prisma.Decimal;
         metadata: Prisma.JsonValue | null;
+        amount: Prisma.Decimal;
+        currency: string;
+        orderId: string | null;
     }>;
     transactions(storeId: string, options?: {
         page?: number;
@@ -96,12 +96,12 @@ export declare class PaymentsService {
             updatedAt: Date;
             storeId: string;
             status: string;
-            currency: string;
-            orderId: string | null;
             provider: string;
             providerRef: string | null;
-            amount: Prisma.Decimal;
             metadata: Prisma.JsonValue | null;
+            amount: Prisma.Decimal;
+            currency: string;
+            orderId: string | null;
         })[];
         page: number;
         limit: number;
@@ -157,12 +157,12 @@ export declare class PaymentsService {
         updatedAt: Date;
         storeId: string;
         status: string;
-        currency: string;
-        orderId: string | null;
         provider: string;
         providerRef: string | null;
-        amount: Prisma.Decimal;
         metadata: Prisma.JsonValue | null;
+        amount: Prisma.Decimal;
+        currency: string;
+        orderId: string | null;
     }>;
     private transactionSort;
 }

@@ -14,10 +14,10 @@ export declare class MembersController {
     list(storeId: string): import(".prisma/client").Prisma.PrismaPromise<({
         user: {
             id: string;
-            email: string;
             name: string;
-            role: import(".prisma/client").$Enums.Role;
             isActive: boolean;
+            email: string;
+            role: import(".prisma/client").$Enums.Role;
         };
     } & {
         createdAt: Date;

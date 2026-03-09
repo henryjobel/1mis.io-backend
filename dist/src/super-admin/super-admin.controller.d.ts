@@ -288,9 +288,9 @@ export declare class SuperAdminController {
         storeId: string;
         storeName: string;
         stripeEnabled: boolean;
-        stripeMode: "test" | "live";
+        stripeMode: "live" | "test";
         sslCommerzEnabled: boolean;
-        sslCommerzMode: "test" | "live";
+        sslCommerzMode: "live" | "test";
         codEnabled: boolean;
         failedCheckout24h: number;
         checkoutSuccessRatePct: number;
@@ -304,9 +304,9 @@ export declare class SuperAdminController {
         storeId: string;
         storeName: string;
         stripeEnabled: boolean;
-        stripeMode: "test" | "live";
+        stripeMode: "live" | "test";
         sslCommerzEnabled: boolean;
-        sslCommerzMode: "test" | "live";
+        sslCommerzMode: "live" | "test";
         codEnabled: boolean;
         failedCheckout24h: number;
         checkoutSuccessRatePct: number;
@@ -315,9 +315,9 @@ export declare class SuperAdminController {
         storeId: string;
         storeName: string;
         stripeEnabled: boolean;
-        stripeMode: "test" | "live";
+        stripeMode: "live" | "test";
         sslCommerzEnabled: boolean;
-        sslCommerzMode: "test" | "live";
+        sslCommerzMode: "live" | "test";
         codEnabled: boolean;
         failedCheckout24h: number;
         checkoutSuccessRatePct: number;
@@ -326,9 +326,9 @@ export declare class SuperAdminController {
         storeId: string;
         storeName: string;
         stripeEnabled: boolean;
-        stripeMode: "test" | "live";
+        stripeMode: "live" | "test";
         sslCommerzEnabled: boolean;
-        sslCommerzMode: "test" | "live";
+        sslCommerzMode: "live" | "test";
         codEnabled: boolean;
         failedCheckout24h: number;
         checkoutSuccessRatePct: number;
@@ -457,28 +457,28 @@ export declare class SuperAdminController {
         updatedAt: string;
     }>;
     flags(): import(".prisma/client").Prisma.PrismaPromise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         description: string | null;
         enabled: boolean;
         rolloutPct: number;
     }[]>;
     upsertFlag(key: string, dto: UpdateFlagDto, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         description: string | null;
         enabled: boolean;
         rolloutPct: number;
     }>;
     auditLogs(query: AuditLogQueryDto): Promise<({
         actor: {
-            email: string;
             name: string;
+            email: string;
         } | null;
     } & {
         id: string;
-        role: import(".prisma/client").$Enums.Role | null;
         createdAt: Date;
+        role: import(".prisma/client").$Enums.Role | null;
         action: string;
         entityType: string;
         entityId: string;
@@ -493,13 +493,13 @@ export declare class SuperAdminController {
         at: string;
     }[]>;
     settings(): import(".prisma/client").Prisma.PrismaPromise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }[]>;
     upsertSetting(key: string, dto: UpdateSettingDto, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     upsertSettingsBatch(dto: UpsertSettingsBatchDto, user: RequestUser): Promise<{

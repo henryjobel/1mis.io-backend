@@ -1,6 +1,7 @@
 import { OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, Role } from '@prisma/client';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
@@ -9,8 +10,9 @@ export declare class AiGenerationService implements OnModuleInit {
     private readonly queueService;
     private readonly configService;
     private readonly auditService;
+    private readonly billingService;
     private readonly logger;
-    constructor(prisma: PrismaService, queueService: QueueService, configService: ConfigService, auditService: AuditService);
+    constructor(prisma: PrismaService, queueService: QueueService, configService: ConfigService, auditService: AuditService, billingService: BillingService);
     onModuleInit(): void;
     createJob(params: {
         storeId: string;
@@ -170,6 +172,7 @@ export declare class AiGenerationService implements OnModuleInit {
     private generateStorePlan;
     private fallbackResult;
     private stripCodeFence;
+    private fetchImageAsBase64;
     private generateSectionPatch;
     private generateFullSitePatch;
     private generateFullSitePatchFromGemini;

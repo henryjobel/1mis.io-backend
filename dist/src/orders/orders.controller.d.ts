@@ -81,12 +81,12 @@ export declare class OrdersController {
             updatedAt: Date;
             storeId: string;
             status: string;
-            currency: string;
-            orderId: string | null;
             provider: string;
             providerRef: string | null;
-            amount: import("@prisma/client/runtime/library").Decimal;
             metadata: import("@prisma/client/runtime/library").JsonValue | null;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            currency: string;
+            orderId: string | null;
         }[];
         id: string;
         createdAt: Date;

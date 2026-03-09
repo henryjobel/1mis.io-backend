@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Prisma, Role } from '@prisma/client';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 export declare const PRODUCT_AI_FIELDS: readonly ["productName", "shortDescription", "longDescription", "seoTitle", "seoMetaDescription", "suggestedPrice", "discountedPrice", "variants", "sku", "actionItems"];
@@ -22,12 +23,15 @@ type ProductAiPayload = {
     variants: ProductAiVariant[];
     sku: string;
     actionItems: string[];
+    tags: string[];
+    features: string[];
 };
 export declare class ProductsService {
     private readonly prisma;
     private readonly configService;
     private readonly auditService;
-    constructor(prisma: PrismaService, configService: ConfigService, auditService: AuditService);
+    private readonly billingService;
+    constructor(prisma: PrismaService, configService: ConfigService, auditService: AuditService, billingService: BillingService);
     create(storeId: string, data: {
         productName?: string;
         title?: string;
@@ -392,6 +396,7 @@ export declare class ProductsService {
     private pickGeneratedField;
     private normalizeImageUrls;
     private generateProductIntelligence;
+    private fetchImageAsBase64;
     private buildAiInstruction;
     private fallbackProductIntelligence;
     private normalizeGeneratedPayload;

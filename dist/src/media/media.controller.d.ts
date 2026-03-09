@@ -25,8 +25,8 @@ export declare class MediaController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        storeId: string;
         url: string;
+        storeId: string;
         altText: string | null;
     }[]>;
     upload(storeId: string, dto: CreateMediaDto, user: RequestUser): Promise<{
@@ -34,8 +34,8 @@ export declare class MediaController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        storeId: string;
         url: string;
+        storeId: string;
         altText: string | null;
     }>;
     createUploadSession(storeId: string, dto: CreateMediaUploadSessionDto, user: RequestUser): Promise<{
@@ -61,8 +61,8 @@ export declare class MediaController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        storeId: string;
         url: string;
+        storeId: string;
         altText: string | null;
     }>;
     uploadStatus(storeId: string, uploadId: string): Promise<{
@@ -83,8 +83,8 @@ export declare class MediaController {
         createdAt: Date;
         updatedAt: Date;
         type: string;
-        storeId: string;
         url: string;
+        storeId: string;
         altText: string | null;
     }>;
 }

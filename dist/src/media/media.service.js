@@ -13,15 +13,18 @@ exports.MediaService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const crypto_1 = require("crypto");
+const billing_service_1 = require("../billing/billing.service");
 const audit_service_1 = require("../common/audit.service");
 const prisma_service_1 = require("../prisma/prisma.service");
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MEDIA_ASSET_META_KEY_PREFIX = 'media_asset_meta';
 let MediaService = class MediaService {
-    constructor(prisma, configService, auditService) {
+    constructor(prisma, configService, auditService, billingService) {
         this.prisma = prisma;
         this.configService = configService;
         this.auditService = auditService;
+        this.billingService = billingService;
     }
     list(storeId) {
         return this.prisma.mediaAsset.findMany({
@@ -37,6 +40,7 @@ let MediaService = class MediaService {
         if (data.sizeBytes > MAX_IMAGE_BYTES) {
             throw new common_1.BadRequestException(`File exceeds max size of ${MAX_IMAGE_BYTES} bytes`);
         }
+        await this.billingService.assertStorageUploadAllowed(storeId, data.sizeBytes);
         const uploadId = (0, crypto_1.randomUUID)();
         const key = this.buildAssetKey(storeId, data.filename);
         const uploadBaseUrl = this.configService.get('MEDIA_UPLOAD_BASE_URL') ??
@@ -176,6 +180,8 @@ let MediaService = class MediaService {
         const finalUrl = data.url?.trim() || payload.url;
         const completedAt = new Date().toISOString();
         const mergedAltText = data.altText ?? payload.altText;
+        const uploadedSizeBytes = typeof payload.sizeBytes === 'number' ? payload.sizeBytes : 0;
+        await this.billingService.assertStorageUploadAllowed(storeId, uploadedSizeBytes);
         const asset = await this.prisma.$transaction(async (tx) => {
             const created = await tx.mediaAsset.create({
                 data: {
@@ -198,8 +204,27 @@ let MediaService = class MediaService {
                     },
                 },
             });
+            await tx.platformSetting.upsert({
+                where: { key: this.mediaAssetMetaKey(storeId, created.id) },
+                create: {
+                    key: this.mediaAssetMetaKey(storeId, created.id),
+                    valueJson: {
+                        sizeBytes: uploadedSizeBytes,
+                        storageUsedMb: this.bytesToMegabytes(uploadedSizeBytes),
+                        createdAt: completedAt,
+                    },
+                },
+                update: {
+                    valueJson: {
+                        sizeBytes: uploadedSizeBytes,
+                        storageUsedMb: this.bytesToMegabytes(uploadedSizeBytes),
+                        createdAt: completedAt,
+                    },
+                },
+            });
             return created;
         });
+        await this.billingService.consumeStorageUsage(storeId, uploadedSizeBytes);
         await this.auditService.log({
             actorUserId: actor.id,
             role: actor.role,
@@ -219,9 +244,20 @@ let MediaService = class MediaService {
         });
         if (!existing)
             throw new common_1.NotFoundException('Media asset not found');
-        const deleted = await this.prisma.mediaAsset.delete({
-            where: { id: assetId },
-        });
+        const metaKey = this.mediaAssetMetaKey(storeId, assetId);
+        const [metaRow, deleted] = await this.prisma.$transaction([
+            this.prisma.platformSetting.findUnique({
+                where: { key: metaKey },
+            }),
+            this.prisma.mediaAsset.delete({
+                where: { id: assetId },
+            }),
+            this.prisma.platformSetting.deleteMany({
+                where: { key: metaKey },
+            }),
+        ]);
+        const sizeBytes = this.readStoredAssetSize(metaRow?.valueJson);
+        await this.billingService.releaseStorageUsage(storeId, sizeBytes);
         await this.auditService.log({
             actorUserId: actor.id,
             role: actor.role,
@@ -291,12 +327,34 @@ let MediaService = class MediaService {
             expiresAt: typeof payload.expiresAt === 'string' ? payload.expiresAt : undefined,
         };
     }
+    mediaAssetMetaKey(storeId, assetId) {
+        return `${MEDIA_ASSET_META_KEY_PREFIX}:${storeId}:${assetId}`;
+    }
+    readStoredAssetSize(value) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+            return 0;
+        }
+        const sizeBytes = value.sizeBytes;
+        if (typeof sizeBytes !== 'number' || !Number.isFinite(sizeBytes)) {
+            return 0;
+        }
+        return Math.max(0, Math.floor(sizeBytes));
+    }
+    bytesToMegabytes(sizeBytes) {
+        if (!Number.isFinite(sizeBytes))
+            return 0;
+        const normalized = Math.max(0, Math.floor(sizeBytes));
+        if (normalized <= 0)
+            return 0;
+        return Math.max(1, Math.ceil(normalized / (1024 * 1024)));
+    }
 };
 exports.MediaService = MediaService;
 exports.MediaService = MediaService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
         config_1.ConfigService,
-        audit_service_1.AuditService])
+        audit_service_1.AuditService,
+        billing_service_1.BillingService])
 ], MediaService);
 //# sourceMappingURL=media.service.js.map

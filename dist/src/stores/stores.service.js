@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.StoresService = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
+const billing_service_1 = require("../billing/billing.service");
 const audit_service_1 = require("../common/audit.service");
 const prisma_service_1 = require("../prisma/prisma.service");
 const SUPER_ROLES = [
@@ -21,9 +22,10 @@ const SUPER_ROLES = [
     client_1.Role.finance,
 ];
 let StoresService = class StoresService {
-    constructor(prisma, auditService) {
+    constructor(prisma, auditService, billingService) {
         this.prisma = prisma;
         this.auditService = auditService;
+        this.billingService = billingService;
     }
     async create(ownerId, data) {
         const store = await this.prisma.store.create({
@@ -73,6 +75,7 @@ let StoresService = class StoresService {
         return store;
     }
     async publish(id, actor) {
+        await this.billingService.assertPublishAllowed(id);
         const store = await this.prisma.store.update({
             where: { id },
             data: { status: client_1.StoreStatus.active, publishedAt: new Date() },
@@ -185,6 +188,7 @@ let StoresService = class StoresService {
         return saved;
     }
     async connectDomain(storeId, domain, actor) {
+        await this.billingService.assertCustomDomainAllowed(storeId);
         const value = {
             domain,
             domainStatus: 'verifying',
@@ -238,6 +242,7 @@ let StoresService = class StoresService {
         return saved;
     }
     async buyDomain(storeId, data, actor) {
+        await this.billingService.assertCustomDomainAllowed(storeId);
         const value = {
             domain: data.domain,
             purchased: true,
@@ -316,6 +321,7 @@ exports.StoresService = StoresService;
 exports.StoresService = StoresService = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        audit_service_1.AuditService])
+        audit_service_1.AuditService,
+        billing_service_1.BillingService])
 ], StoresService);
 //# sourceMappingURL=stores.service.js.map

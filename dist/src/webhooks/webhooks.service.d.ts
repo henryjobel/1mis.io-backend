@@ -24,7 +24,7 @@ export declare class WebhooksService {
     }, secret?: string): Promise<{
         accepted: boolean;
         processed: boolean;
-        provider: "stripe" | "sslcommerz";
+        provider: "sslcommerz" | "stripe";
         status: string;
         transactionId: string | null;
         orderId: string | null;

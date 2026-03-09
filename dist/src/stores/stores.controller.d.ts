@@ -140,34 +140,34 @@ export declare class StoresController {
     }>;
     getMarketing(id: string): Promise<string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray>;
     upsertMarketing(id: string, dto: UpdateMarketingDto, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     getContent(id: string): Promise<string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray>;
     upsertContent(id: string, dto: Record<string, unknown>, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     connectDomain(id: string, dto: ConnectDomainDto, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     verifyDomain(id: string, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     buyDomain(id: string, dto: BuyDomainDto, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     refreshSsl(id: string, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
 }

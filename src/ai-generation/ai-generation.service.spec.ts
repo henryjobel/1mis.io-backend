@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { AuditService } from '../common/audit.service';
+import { BillingService } from '../billing/billing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { AiJobStatus } from '@prisma/client';
@@ -32,9 +33,18 @@ describe('AiGenerationService', () => {
     log: jest.fn(),
   };
 
+  const billing = {
+    consumeAiUsage: jest.fn().mockResolvedValue(undefined),
+    assertProductCreateAllowed: jest.fn().mockResolvedValue(undefined),
+    syncProductsUsage: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     processor = undefined;
+    billing.consumeAiUsage.mockResolvedValue(undefined);
+    billing.assertProductCreateAllowed.mockResolvedValue(undefined);
+    billing.syncProductsUsage.mockResolvedValue(undefined);
   });
 
   it('creates and enqueues job', async () => {
@@ -44,6 +54,7 @@ describe('AiGenerationService', () => {
       queue as unknown as QueueService,
       config as unknown as ConfigService,
       audit as unknown as AuditService,
+      billing as unknown as BillingService,
     );
 
     const result = await service.createJob({
@@ -52,6 +63,7 @@ describe('AiGenerationService', () => {
       prompt: 'test',
     });
     expect(result.id).toBe('job1');
+    expect(billing.consumeAiUsage).toHaveBeenCalledWith('s1', 1);
     expect(queue.enqueueAiJob).toHaveBeenCalledWith('job1');
   });
 
@@ -66,6 +78,7 @@ describe('AiGenerationService', () => {
       queue as unknown as QueueService,
       config as unknown as ConfigService,
       audit as unknown as AuditService,
+      billing as unknown as BillingService,
     );
     service.onModuleInit();
 

@@ -138,6 +138,8 @@ export declare class ProductsController {
         }[];
         sku: string;
         actionItems: string[];
+        tags: string[];
+        features: string[];
     }>;
     list(storeId: string, query: ProductListQueryDto): Promise<{
         items: {

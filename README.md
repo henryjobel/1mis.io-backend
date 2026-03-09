@@ -83,6 +83,27 @@ Default API port: `4000`
 - `GET /api/stores/:id/ai/sections/history`
 - `POST /api/stores/:id/ai/sections/history/:historyId/revert`
 
+### Billing (Phase 1)
+- `GET /api/plans`
+- `GET /api/stores/:id/subscription`
+- `GET /api/stores/:id/subscription/invoices`
+- `GET /api/stores/:id/subscription/events`
+- `POST /api/stores/:id/subscription/renew`
+- `POST /api/stores/:id/subscription/sslcommerz/init`
+- `POST /api/stores/:id/subscription/cancel`
+- `POST /api/webhooks/sslcommerz/subscription`
+- `POST /api/webhooks/sslcommerz/subscription/ipn`
+- `POST|GET /api/webhooks/sslcommerz/subscription/success`
+- `POST|GET /api/webhooks/sslcommerz/subscription/fail`
+- `POST|GET /api/webhooks/sslcommerz/subscription/cancel`
+- `GET /api/webhooks/sslcommerz/subscription/mock/:invoiceId`
+
+SSLCommerz callback behavior:
+- `GET` callback routes redirect to owner billing page (`OWNER_DASHBOARD_BILLING_URL`).
+- `POST` callback routes process server-to-server provider events.
+- If `SSLCOMMERZ_STORE_ID` / `SSLCOMMERZ_STORE_PASSWORD` are empty, init uses local mock checkout URL.
+- For paid callbacks in live mode, backend validates `val_id` via SSLCommerz validation API before activating subscription.
+
 ### Compliance
 - `POST /api/stores/:id/compliance/gdpr/export`
 - `POST /api/stores/:id/compliance/gdpr/delete-request`

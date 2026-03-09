@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, Role, StoreStatus } from '@prisma/client';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -19,6 +20,7 @@ export class StoresService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly billingService: BillingService,
   ) {}
 
   async create(
@@ -88,6 +90,8 @@ export class StoresService {
   }
 
   async publish(id: string, actor: { id: string; role: Role }) {
+    await this.billingService.assertPublishAllowed(id);
+
     const store = await this.prisma.store.update({
       where: { id },
       data: { status: StoreStatus.active, publishedAt: new Date() },
@@ -237,6 +241,8 @@ export class StoresService {
     domain: string,
     actor: { id: string; role: Role },
   ) {
+    await this.billingService.assertCustomDomainAllowed(storeId);
+
     const value = {
       domain,
       domainStatus: 'verifying',
@@ -297,6 +303,8 @@ export class StoresService {
     data: { domain: string; autoConnect?: boolean },
     actor: { id: string; role: Role },
   ) {
+    await this.billingService.assertCustomDomainAllowed(storeId);
+
     const value = {
       domain: data.domain,
       purchased: true,

@@ -598,12 +598,12 @@ export declare class PublicStoreService {
             updatedAt: Date;
             storeId: string;
             status: string;
-            currency: string;
-            orderId: string | null;
             provider: string;
             providerRef: string | null;
-            amount: Prisma.Decimal;
             metadata: Prisma.JsonValue | null;
+            amount: Prisma.Decimal;
+            currency: string;
+            orderId: string | null;
         }[];
     } & {
         id: string;

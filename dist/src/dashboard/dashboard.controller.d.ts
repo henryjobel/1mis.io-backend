@@ -31,7 +31,7 @@ export declare class DashboardController {
             codEnabled: boolean;
             stripeEnabled: boolean;
             sslCommerzEnabled: boolean;
-            mode: "test" | "live";
+            mode: "live" | "test";
         };
     }>;
 }

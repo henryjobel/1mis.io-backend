@@ -13,4 +13,18 @@ export declare function validateEnv(config: Record<string, unknown>): {
     GEMINI_PROJECT_NUMBER?: string | undefined;
     GEMINI_PROJECT_ID?: string | undefined;
     WEBHOOK_SECRET?: string | undefined;
+    BACKEND_PUBLIC_URL?: string | undefined;
+    OWNER_APP_PUBLIC_URL?: string | undefined;
+    OWNER_DASHBOARD_BILLING_URL?: string | undefined;
+    SSLCOMMERZ_STORE_ID?: string | undefined;
+    SSLCOMMERZ_STORE_PASSWORD?: string | undefined;
+    SSLCOMMERZ_WEBHOOK_SECRET?: string | undefined;
+    SSLCOMMERZ_API_BASE_URL?: string | undefined;
+    SSLCOMMERZ_INIT_PATH?: string | undefined;
+    SSLCOMMERZ_VALIDATION_API_BASE_URL?: string | undefined;
+    SSLCOMMERZ_VALIDATION_API_PATH?: string | undefined;
+    SSLCOMMERZ_SUCCESS_URL?: string | undefined;
+    SSLCOMMERZ_FAIL_URL?: string | undefined;
+    SSLCOMMERZ_CANCEL_URL?: string | undefined;
+    SSLCOMMERZ_IPN_URL?: string | undefined;
 };

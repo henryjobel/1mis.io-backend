@@ -34,8 +34,8 @@ export declare class PaymentsController {
     constructor(paymentsService: PaymentsService);
     config(storeId: string): Promise<string | number | boolean | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray>;
     upsertConfig(storeId: string, dto: PaymentConfigDto, user: RequestUser): Promise<{
-        updatedAt: Date;
         key: string;
+        updatedAt: Date;
         valueJson: import("@prisma/client/runtime/library").JsonValue;
     }>;
     intent(storeId: string, dto: PaymentIntentDto, user: RequestUser): Promise<{
@@ -44,12 +44,12 @@ export declare class PaymentsController {
         updatedAt: Date;
         storeId: string;
         status: string;
-        currency: string;
-        orderId: string | null;
         provider: string;
         providerRef: string | null;
-        amount: import("@prisma/client/runtime/library").Decimal;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
+        amount: import("@prisma/client/runtime/library").Decimal;
+        currency: string;
+        orderId: string | null;
     }>;
     confirm(storeId: string, dto: ConfirmPaymentDto, user: RequestUser): Promise<{
         id: string;
@@ -57,12 +57,12 @@ export declare class PaymentsController {
         updatedAt: Date;
         storeId: string;
         status: string;
-        currency: string;
-        orderId: string | null;
         provider: string;
         providerRef: string | null;
-        amount: import("@prisma/client/runtime/library").Decimal;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
+        amount: import("@prisma/client/runtime/library").Decimal;
+        currency: string;
+        orderId: string | null;
     }>;
     refund(storeId: string, dto: RefundPaymentDto, user: RequestUser): Promise<{
         id: string;
@@ -70,12 +70,12 @@ export declare class PaymentsController {
         updatedAt: Date;
         storeId: string;
         status: string;
-        currency: string;
-        orderId: string | null;
         provider: string;
         providerRef: string | null;
-        amount: import("@prisma/client/runtime/library").Decimal;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
+        amount: import("@prisma/client/runtime/library").Decimal;
+        currency: string;
+        orderId: string | null;
     }>;
     transactions(storeId: string, query: PaymentTransactionListQueryDto): Promise<{
         items: ({
@@ -91,12 +91,12 @@ export declare class PaymentsController {
             updatedAt: Date;
             storeId: string;
             status: string;
-            currency: string;
-            orderId: string | null;
             provider: string;
             providerRef: string | null;
-            amount: import("@prisma/client/runtime/library").Decimal;
             metadata: import("@prisma/client/runtime/library").JsonValue | null;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            currency: string;
+            orderId: string | null;
         })[];
         page: number;
         limit: number;
@@ -152,12 +152,12 @@ export declare class PaymentsController {
         updatedAt: Date;
         storeId: string;
         status: string;
-        currency: string;
-        orderId: string | null;
         provider: string;
         providerRef: string | null;
-        amount: import("@prisma/client/runtime/library").Decimal;
         metadata: import("@prisma/client/runtime/library").JsonValue | null;
+        amount: import("@prisma/client/runtime/library").Decimal;
+        currency: string;
+        orderId: string | null;
     }>;
 }
 export {};

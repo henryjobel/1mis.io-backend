@@ -40,6 +40,7 @@ const notifications_module_1 = require("./notifications/notifications.module");
 const inventory_module_1 = require("./inventory/inventory.module");
 const dashboard_module_1 = require("./dashboard/dashboard.module");
 const compliance_module_1 = require("./compliance/compliance.module");
+const billing_module_1 = require("./billing/billing.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -80,6 +81,7 @@ exports.AppModule = AppModule = __decorate([
             inventory_module_1.InventoryModule,
             dashboard_module_1.DashboardModule,
             compliance_module_1.ComplianceModule,
+            billing_module_1.BillingModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

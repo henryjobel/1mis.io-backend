@@ -25,7 +25,7 @@ export declare class WebhooksController {
     stripe(dto: PaymentWebhookDto, secret?: string): Promise<{
         accepted: boolean;
         processed: boolean;
-        provider: "stripe" | "sslcommerz";
+        provider: "sslcommerz" | "stripe";
         status: string;
         transactionId: string | null;
         orderId: string | null;
@@ -33,7 +33,7 @@ export declare class WebhooksController {
     sslcommerz(dto: PaymentWebhookDto, secret?: string): Promise<{
         accepted: boolean;
         processed: boolean;
-        provider: "stripe" | "sslcommerz";
+        provider: "sslcommerz" | "stripe";
         status: string;
         transactionId: string | null;
         orderId: string | null;

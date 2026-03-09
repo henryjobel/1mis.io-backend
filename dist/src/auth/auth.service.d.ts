@@ -58,8 +58,8 @@ export declare class AuthService {
     me(userId: string): Promise<{
         [x: string]: ({
             id: string;
-            role: import(".prisma/client").$Enums.Role | null;
             createdAt: Date;
+            role: import(".prisma/client").$Enums.Role | null;
             action: string;
             entityType: string;
             entityId: string;
@@ -67,8 +67,8 @@ export declare class AuthService {
             actorUserId: string | null;
         } | {
             id: string;
-            role: import(".prisma/client").$Enums.Role | null;
             createdAt: Date;
+            role: import(".prisma/client").$Enums.Role | null;
             action: string;
             entityType: string;
             entityId: string;
@@ -194,10 +194,32 @@ export declare class AuthService {
             title: string | null;
             comment: string | null;
             isApproved: boolean;
+        })[] | ({
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: import(".prisma/client").$Enums.SubscriptionStatus;
+            userId: string;
+            planId: string;
+            startDate: Date;
+            endDate: Date;
+            cancelledAt: Date | null;
+        } | {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: import(".prisma/client").$Enums.SubscriptionStatus;
+            userId: string;
+            planId: string;
+            startDate: Date;
+            endDate: Date;
+            cancelledAt: Date | null;
         })[] | {
             id: string;
-            role: import(".prisma/client").$Enums.Role | null;
             createdAt: Date;
+            role: import(".prisma/client").$Enums.Role | null;
             action: string;
             entityType: string;
             entityId: string;
@@ -263,6 +285,17 @@ export declare class AuthService {
             title: string | null;
             comment: string | null;
             isApproved: boolean;
+        }[] | {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            storeId: string;
+            status: import(".prisma/client").$Enums.SubscriptionStatus;
+            userId: string;
+            planId: string;
+            startDate: Date;
+            endDate: Date;
+            cancelledAt: Date | null;
         }[];
         [x: number]: never;
         [x: symbol]: never;

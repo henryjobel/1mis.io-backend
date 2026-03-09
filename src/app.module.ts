@@ -31,6 +31,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { ComplianceModule } from './compliance/compliance.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { ComplianceModule } from './compliance/compliance.module';
     InventoryModule,
     DashboardModule,
     ComplianceModule,
+    BillingModule,
   ],
   controllers: [AppController],
   providers: [

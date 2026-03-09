@@ -15,6 +15,20 @@ const envSchema = z.object({
   GEMINI_PROJECT_NUMBER: z.string().optional(),
   GEMINI_PROJECT_ID: z.string().optional(),
   WEBHOOK_SECRET: z.string().optional(),
+  BACKEND_PUBLIC_URL: z.string().url().optional(),
+  OWNER_APP_PUBLIC_URL: z.string().url().optional(),
+  OWNER_DASHBOARD_BILLING_URL: z.string().url().optional(),
+  SSLCOMMERZ_STORE_ID: z.string().optional(),
+  SSLCOMMERZ_STORE_PASSWORD: z.string().optional(),
+  SSLCOMMERZ_WEBHOOK_SECRET: z.string().optional(),
+  SSLCOMMERZ_API_BASE_URL: z.string().url().optional(),
+  SSLCOMMERZ_INIT_PATH: z.string().optional(),
+  SSLCOMMERZ_VALIDATION_API_BASE_URL: z.string().url().optional(),
+  SSLCOMMERZ_VALIDATION_API_PATH: z.string().optional(),
+  SSLCOMMERZ_SUCCESS_URL: z.string().url().optional(),
+  SSLCOMMERZ_FAIL_URL: z.string().url().optional(),
+  SSLCOMMERZ_CANCEL_URL: z.string().url().optional(),
+  SSLCOMMERZ_IPN_URL: z.string().url().optional(),
 });
 
 export function validateEnv(config: Record<string, unknown>) {

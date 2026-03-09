@@ -6,11 +6,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Prisma, Role } from '@prisma/client';
 import { createHmac, randomUUID } from 'crypto';
+import { BillingService } from '../billing/billing.service';
 import { AuditService } from '../common/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MEDIA_ASSET_META_KEY_PREFIX = 'media_asset_meta';
 
 @Injectable()
 export class MediaService {
@@ -18,6 +20,7 @@ export class MediaService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly auditService: AuditService,
+    private readonly billingService: BillingService,
   ) {}
 
   list(storeId: string) {
@@ -49,6 +52,10 @@ export class MediaService {
         `File exceeds max size of ${MAX_IMAGE_BYTES} bytes`,
       );
     }
+    await this.billingService.assertStorageUploadAllowed(
+      storeId,
+      data.sizeBytes,
+    );
 
     const uploadId = randomUUID();
     const key = this.buildAssetKey(storeId, data.filename);
@@ -210,6 +217,12 @@ export class MediaService {
     const finalUrl = data.url?.trim() || payload.url;
     const completedAt = new Date().toISOString();
     const mergedAltText = data.altText ?? payload.altText;
+    const uploadedSizeBytes =
+      typeof payload.sizeBytes === 'number' ? payload.sizeBytes : 0;
+    await this.billingService.assertStorageUploadAllowed(
+      storeId,
+      uploadedSizeBytes,
+    );
 
     const asset = await this.prisma.$transaction(async (tx) => {
       const created = await tx.mediaAsset.create({
@@ -235,8 +248,29 @@ export class MediaService {
         },
       });
 
+      await tx.platformSetting.upsert({
+        where: { key: this.mediaAssetMetaKey(storeId, created.id) },
+        create: {
+          key: this.mediaAssetMetaKey(storeId, created.id),
+          valueJson: {
+            sizeBytes: uploadedSizeBytes,
+            storageUsedMb: this.bytesToMegabytes(uploadedSizeBytes),
+            createdAt: completedAt,
+          } as Prisma.InputJsonValue,
+        },
+        update: {
+          valueJson: {
+            sizeBytes: uploadedSizeBytes,
+            storageUsedMb: this.bytesToMegabytes(uploadedSizeBytes),
+            createdAt: completedAt,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
       return created;
     });
+
+    await this.billingService.consumeStorageUsage(storeId, uploadedSizeBytes);
 
     await this.auditService.log({
       actorUserId: actor.id,
@@ -263,9 +297,20 @@ export class MediaService {
     });
     if (!existing) throw new NotFoundException('Media asset not found');
 
-    const deleted = await this.prisma.mediaAsset.delete({
-      where: { id: assetId },
-    });
+    const metaKey = this.mediaAssetMetaKey(storeId, assetId);
+    const [metaRow, deleted] = await this.prisma.$transaction([
+      this.prisma.platformSetting.findUnique({
+        where: { key: metaKey },
+      }),
+      this.prisma.mediaAsset.delete({
+        where: { id: assetId },
+      }),
+      this.prisma.platformSetting.deleteMany({
+        where: { key: metaKey },
+      }),
+    ]);
+    const sizeBytes = this.readStoredAssetSize(metaRow?.valueJson);
+    await this.billingService.releaseStorageUsage(storeId, sizeBytes);
 
     await this.auditService.log({
       actorUserId: actor.id,
@@ -370,5 +415,27 @@ export class MediaService {
       expiresAt:
         typeof payload.expiresAt === 'string' ? payload.expiresAt : undefined,
     };
+  }
+
+  private mediaAssetMetaKey(storeId: string, assetId: string) {
+    return `${MEDIA_ASSET_META_KEY_PREFIX}:${storeId}:${assetId}`;
+  }
+
+  private readStoredAssetSize(value: Prisma.JsonValue | null | undefined) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return 0;
+    }
+    const sizeBytes = (value as Record<string, unknown>).sizeBytes;
+    if (typeof sizeBytes !== 'number' || !Number.isFinite(sizeBytes)) {
+      return 0;
+    }
+    return Math.max(0, Math.floor(sizeBytes));
+  }
+
+  private bytesToMegabytes(sizeBytes: number) {
+    if (!Number.isFinite(sizeBytes)) return 0;
+    const normalized = Math.max(0, Math.floor(sizeBytes));
+    if (normalized <= 0) return 0;
+    return Math.max(1, Math.ceil(normalized / (1024 * 1024)));
   }
 }
