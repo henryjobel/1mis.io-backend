@@ -8,7 +8,7 @@ NestJS backend with multi-tenant store APIs and super-admin APIs in one service.
 - Redis + BullMQ fix
 - JWT + RBAC
 - Gemini integration flow (async jobs)
-
+ fix
 ## Quick Start
 1. `cp .env.example .env`
 2. `docker compose up -d`
