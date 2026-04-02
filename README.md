@@ -5,7 +5,7 @@ NestJS backend with multi-tenant store APIs and super-admin APIs in one service.
 ## Stack
 - NestJS (REST)
 - PostgreSQL + Prisma
-- Redis + BullMQ
+- Redis + BullMQ fix
 - JWT + RBAC
 - Gemini integration flow (async jobs)
 
