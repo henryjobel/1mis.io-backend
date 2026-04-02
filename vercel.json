@@ -1,16 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "npm install && npx prisma generate && npm run build",
-  "outputDirectory": "dist",
+  "buildCommand": "npm install && npx prisma generate",
   "functions": {
-    "dist/main.js": {
+    "api/index.ts": {
       "maxDuration": 30
     }
   },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/dist/main.js"
+      "destination": "/api/index.ts"
     }
   ]
 }
